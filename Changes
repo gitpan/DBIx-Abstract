@@ -1,4 +1,11 @@
 Revision history for Perl extension DBIx::Abstract.
+1.00   2001-09-04
+       - Now produces a better error that config/DSN is not defined.
+       - When the DBIx::Abstract object is destroyed it usually closes any
+         associated database handles (if it's the last clone alive), now it
+         will only do this if it created the handle.  This way, if you pass
+         in a handle it will survive its use by DBIx::Abstract.
+
 0.96   2001-07-07
        - Fixed stupid bug that made it not accept DBI handles.  I can't
          believe I actually took eight months to check this in.

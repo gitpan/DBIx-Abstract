@@ -1,14 +1,5 @@
-#1 Rewrite SQL generation to be OO.  This will involve generating a new,
-   seperate module that just generates SQL.
-
-* Look into adding all standard options not currently present to commands
-* (perhaps only through the hash style params)
-
-== Look into the ability to add proprietary options to commands
-   Proprietary stuff should be documented away form the main
-   documentation... or CLEARLY marked.
-   Currently it is possible to do this sort of thing with the "extra"
-   parameter, but I'm some what ambivalent about its merits.  It's not
-   documented yet either (due to this ambivalence).
-   * LIMIT functionality to "SELECT"
-   * Other MySQL specific stuff (like insertid)
+** Work is now underway on a significantly different 1.1 branch.  While it
+doesn't have any major API changes, all of its SQL generation has been
+farmed out to a seperate module.  Additionally, some depricated features are
+being dropped.  Significant testing will occur before it hits CPAN.  Till
+then it can be found at Source Forge.

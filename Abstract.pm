@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.4 2001/07/07 13:32:50 daerr Exp $
+# $Id: Abstract.pm,v 1.6 2001/09/04 16:51:17 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -6,10 +6,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.96';
-  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.4 $ =~ /(\d+\.[\d.]+)/;
+  $DBIx::Abstract::VERSION = '1.000';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.6 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
-    q$Date: 2001/07/07 13:32:50 $ =~ /(\d+\/\S+ \d+:\S+)/;
+    q$Date: 2001/09/04 16:51:17 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {
@@ -49,21 +49,27 @@ sub connect {
   my($dbh,$data_source,$user,$pass);
   my $self = {};
   
-  if (ref($config) eq 'HASH') {
-    $user = $$config{'user'} || $$config{'username'};
-    $pass = $$config{'password'} || $$config{'pass'};
-    if (!defined($$config{'user'}) && $$config{'password'}) {
-      $$config{'password'} = undef;
-    }
-    if (exists($$config{'dsn'})) {
-      $data_source = $$config{'dsn'};
+  if (!defined($config)) {
+    die "DBIx::Abstract->connect A connection configuration must be provided.";
+  } elsif (ref($config) eq 'HASH') {
+    if ($$config{'dbh'}) {
+        $dbh = $$config{'dbh'};
     } else {
-      $$config{'driver'} ||= 'mysql'; # Because it's what I use
-      $$config{'dbname'} ||= $$config{'db'} || ''; 
-      $$config{'host'} ||= '';
-      $$config{'port'} ||= '';
+      $user = $$config{'user'} || $$config{'username'};
+      $pass = $$config{'password'} || $$config{'pass'};
+      if (!defined($$config{'user'}) && $$config{'password'}) {
+        $$config{'password'} = undef;
+      }
+      if (exists($$config{'dsn'})) {
+        $data_source = $$config{'dsn'};
+      } else {
+        $$config{'driver'} ||= 'mysql'; # Because it's what I use
+        $$config{'dbname'} ||= $$config{'db'} || ''; 
+        $$config{'host'} ||= '';
+        $$config{'port'} ||= '';
 
-      $data_source = ___drivers($$config{'driver'},$config);
+        $data_source = ___drivers($$config{'driver'},$config);
+      }
     }
   } elsif (UNIVERSAL::isa($config,'DBI::db')) {
     $dbh = $config;
@@ -82,16 +88,20 @@ sub connect {
   }
 
   if (!$dbh) { return 0 }
-  bless $self, $class;
-  $self->{'connect'} = {
-    driver              => $$config{'driver'},
-    dbname              => $$config{'dbname'},
-    host                => $$config{'host'},
-    port                => $$config{'port'},
-    user                => $user,
-    password            => $pass,
-    data_source         => $data_source,
-  };
+  bless($self, $class);
+  if (ref($config) eq 'HASH' and !$$config{'dbh'}) {
+    $self->{'connect'} = {
+      driver              => $$config{'driver'},
+      dbname              => $$config{'dbname'},
+      host                => $$config{'host'},
+      port                => $$config{'port'},
+      user                => $user,
+      password            => $pass,
+      data_source         => $data_source,
+    };
+  } else {
+    $self->{'connect'} = { dbh => 1 };
+  }
   $self->{'dbh'} = $dbh;
   $self->opt(AutoCommit=>$self->{'dbh'}->{'AutoCommit'});
   $self->opt(loglevel=>0);
@@ -101,7 +111,7 @@ sub connect {
   my @log;
   if (exists($$config{'dsn'})) {
     push(@log,'dsn=>'.$data_source) if defined($data_source);
-  } else {
+  } elsif (ref($config) eq 'HASH') {
     foreach (qw( driver host port db )) {
       push(@log,$_.'=>'.$$config{$_}) if defined($$config{$_});
     }
@@ -198,7 +208,11 @@ sub DESTROY {
       }
     }
     $self->{'sth'}->finish if ref($self->{'sth'});
-    $self->{'dbh'}->disconnect if defined($self->{'dbh'});
+
+    # Close our handle if we opened it and its still around
+    if (!$self->{'connect'}{'dbh'} and defined($self->{'dbh'})) {
+        $self->{'dbh'}->disconnect;
+    }
   } else {
     my $new = [];
     foreach (@{$self->{'ORIG'}->{'CLONES'}}) {
@@ -1457,8 +1471,12 @@ will work with all drivers.)
 
 =over 2
 
-=item * Fixed stupid bug that made it not accept DBI handles.  I can't
-        believe I actually took eight months to check this in.
+=item * Now produces a better error that config/DSN is not defined.
+
+=item * When the DBIx::Abstract object is destroyed it usually closes any
+        associated database handles (if it's the last clone alive), now it
+        will only do this if it created the handle.  This way, if you pass
+        in a handle it will survive its use by DBIx::Abstract.
 
 =head1 AUTHOR
 
