@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.10 2003/02/18 03:23:58 daerr Exp $
+# $Id: Abstract.pm,v 1.11 2003/02/18 03:28:48 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -7,10 +7,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '1.004';
-  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.10 $ =~ /(\d+\.[\d.]+)/;
+  $DBIx::Abstract::VERSION = '1.005';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.11 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
-    q$Date: 2003/02/18 03:23:58 $ =~ /(\d+\/\S+ \d+:\S+)/;
+    q$Date: 2003/02/18 03:28:48 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {

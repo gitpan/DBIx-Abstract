@@ -6,7 +6,7 @@ use Getopt::Long();
 use Data::Dumper ();
 
 my $TESTDB  = "test";
-my $TESTDRIVER = "mysql";
+my $TESTDRIVER = "";
 
 use vars qw($opt);
 $opt =
@@ -73,41 +73,15 @@ WriteMakefile(
     'VERSION_FROM'	=> 'Abstract.pm', 
     'PREREQ_PM'		=> {
         'DBI'              => 0,
-        'Test::More'       => 0,
-        'ExtUtils::PerlPP' => 0,
+        'Scalar::Util'     => 0,
         },
+    'PM'            => {'Abstract.pm'=>'blib/lib/DBIx/Abstract.pm'},
     'dist'          => {'COMPRESS'=>'gzip -9f', 'SUFFIX' => 'gz'},
-    'clean'         => {FILES=>'config.pl t/3.t test.log'},
+#    'clean'         => {FILES=>'config.pl t/3.t test.log'},
     ($ExtUtils::MakeMaker::VERSION >= 5.43 ?
       (ABSTRACT_FROM => 'Abstract.pm', # retrieve abstract from module
        AUTHOR        => 'Andy Turner <turnera@cpan.org>') : ()),
 );
-
-{
-
-package MY;
-
-sub processPL {
-    my($self) = shift;
-    my @output;
-    foreach (keys(%{$self->{'PL_FILES'}})) {
-        my $from = $_;
-        my $to = $self->{'PL_FILES'}{$_};
-        my $cfg = 'config.pl';
-        push(@output, qq|
-pm_to_blib: $to
-
-$to: $from
-	\$(PERL) -I\$(INST_ARCHLIB) -I\$(INST_LIB) -I\$(PERL_ARCHLIB) \\
-			-I\$(PERL_LIB) -Ilib -MExtUtils::PerlPP \\
-			-e ppp "$from" "$to" "$cfg"
-
-|);
-    }
-    join('', @output);
-}
-
-}
 
 sub Configure {
     my($opt, $source, $param) = @_;

@@ -1,5 +1,13 @@
 Revision history for Perl extension DBIx::Abstract.
 
+1.005  2002-03-14 -- The "I broke the build and install process" release
+       - Fixed a stupid problem where Test::Builder and Test::More would be
+         installed by this package.  Ack.
+       - Made the Makefile.PL default to not providing a database driver. 
+         Tests will be skipped if you do this.  (This way automated module
+         testing won't break when it shouldn't.)
+       - Added a dependency on Scalar::Util.
+
 1.004  2002-02-17
        - ensure_connection did not work correctly if DBI was set to die on
          errors.
