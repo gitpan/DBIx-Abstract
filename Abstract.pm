@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.6 2001/09/04 16:51:17 daerr Exp $
+# $Id: Abstract.pm,v 1.8 2002/09/24 05:03:06 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -6,10 +6,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '1.001';
-  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.6 $ =~ /(\d+\.[\d.]+)/;
+  $DBIx::Abstract::VERSION = '1.003';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.8 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
-    q$Date: 2001/09/04 16:51:17 $ =~ /(\d+\/\S+ \d+:\S+)/;
+    q$Date: 2002/09/24 05:03:06 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {
@@ -23,6 +23,14 @@ sub ___drivers {
     # other preference.  It is ODBC style.
     DEFAULT     => "dbi:$driver:"
     );
+
+  # Make Oracle look a little bit like other DBs.
+  # Right now we only have one hack, but I can imagine there being
+  # more...
+  if ($driver eq 'Oracle') {
+    $$config{'sid'} ||= delete($$config{'dbname'});
+  }
+
   my @keys;
   foreach (keys(%$config)) {
     next if /^user$/;
@@ -260,7 +268,7 @@ sub opt {
   }
   my $ret;
   if ($valid_opts{$key}) {
-    $ret = $self->{$key};
+    $ret = $self->{'options'}{$key};
   } elsif (exists($self->{'dbh'}{$key})) {
     $ret = $self->{'dbh'}{$key};
   } else {
@@ -1478,30 +1486,36 @@ will work with all drivers.)
 
 =back
 
-=head1 CHANGE SINCE LAST RELEASE
+=head1 CHANGES SINCE LAST RELEASE
 
 =over 2
 
-=item * Made it so that opt can now take any DBI attribute.
+=item * Fixed Win32 bug found by Kanji T Bates.
+
+=item * Connect for oracle can look a bit more like those for other DBD
+        drivers now.  You may now speicify your SID in the dbname field.
+
+=item * Fixed bug introduced in 1.001 where trying to read ->opt always
+        produced undef.
 
 =head1 AUTHOR
 
 Andrew Turner <turnera@cpan.org>
 
-=head1 COPYRIGHT
+=head1 COPYRIGHT AND LICENSE
 
-(C) Copyright 1998-2000 MINT
-(C) Copyright 2000-2001 Adelphia
-(C) Copyright 2001 Andrew Turner
+Portions copyright 2001-2002 by Andrew Turner
 
-This program is free software; you can redistribute it
-and/or modify it under the same terms as Perl itself.
+Portions copyright 2000-2001 by Adelphia Business Solutions
 
-=head1 WEBSITE
+Copyright 1998-2000 by the Maine Internetworks (MINT)
 
-http://sourceforge.net/projects/dbix-abstract/
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
+
+http://sourceforge.net/projects/dbix-abstract/
 
 L<DBI(3)>
 

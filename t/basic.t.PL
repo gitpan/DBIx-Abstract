@@ -12,7 +12,7 @@ my $dsn  = q{~~test_dsn~~};
 my $user = q{~~test_user~~} || undef;
 my $pass = q{~~test_pass~~} || undef;
 
-plan test => 20;
+plan test => 23;
 
 # 1
 eval {
@@ -146,14 +146,29 @@ eval {
 # 18
 eval {
     $dbh->opt('this_does_not_exist',7);
-}; ok($@?1:0,1,'invalid option');
+}; ok($@?1:0,1,'write invalid option');
 
 # 19
+eval {
+    $dbh->opt('loglevel',3);
+}; ok($@?1:0,0,'write valid option');
+
+# 20
+eval {
+    $result = $dbh->opt('loglevel');
+}; ok($result,3,'read valid option');
+
+# 21
+eval {
+    $result = $dbh->opt('AutoCommit');
+}; ok($@?1:0,0,'read dbi option');
+
+# 22
 eval { 
     $dbh->disconnect;
 }; ok($@,'','disconnect');
 
-# 20
+# 23
 eval { 
     $dbh->connected and die "ARGH!\n";
 }; ok($@,'','bad connected');

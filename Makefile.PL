@@ -97,7 +97,7 @@ WriteMakefile(
     'linkext'       => { LINKTYPE=>'' },
     'dist'          => {'COMPRESS'=>'gzip -9f', 'SUFFIX' => 'gz'},
     'clean'         => {FILES=>'config.pl t/basic.t test.log'},
-    'PL_FILES'      => ['t/basic.t.PL','t/basic.t'],
+    'PL_FILES'      => {'t/basic.t.PL','t/basic.t'},
 );
 
 package MY;
@@ -111,7 +111,7 @@ sub libscan {
 sub processPL {
     my($self) = shift;
     my @output;
-    my @files = @{$self->{'PL_FILES'}};
+    my @files = %{$self->{'PL_FILES'}};
     while (@files) {
         my $from = shift @files;
         my $to = shift @files;  
@@ -122,7 +122,7 @@ pm_to_blib: $to
 $to: $from
 	\$(PERL) -I\$(INST_ARCHLIB) -I\$(INST_LIB) -I\$(PERL_ARCHLIB) \\
 			-I\$(PERL_LIB) -Ilib -MExtUtils::PerlPP \\
-			-e ppp '$from' '$to' '$cfg'
+			-e ppp "$from" "$to" "$cfg"
 
 |);
     }

@@ -1,4 +1,14 @@
 Revision history for Perl extension DBIx::Abstract.
+
+1.003  2002-09-23
+       - Fixed Win32 bug found by Kanji T Bates.
+       - Connect for oracle can look a bit more like those for other DBD
+         drivers now.  You may now speicify your SID in the dbname field.
+
+1.002  2001-09-05
+       - Fixed bug introduced in 1.001 where trying to read ->opt always
+         produced undef.
+
 1.001  2001-09-05
        - Made it so that opt can now take any DBI attribute.
 

@@ -8,3 +8,4 @@ TODO
 lib/ExtUtils/PerlPP.pm
 lib/Test.pm
 t/basic.t.PL
+THANKS
