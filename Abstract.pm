@@ -1,3 +1,4 @@
+# $Id: Abstract.pm,v 1.22 2000/04/17 23:16:32 turner Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -5,12 +6,11 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.921';
-  q|
-$Id: Abstract.pm,v 1.19 2000/04/07 16:27:03 turner Exp $
-| =~ m/,v ([\d.]+) (\d+.\d+.\d+ \d+:\d+:\d+) /;
+  $DBIx::Abstract::VERSION = '0.93';
+  q{$Revision: 1.22 $} =~ /^\044Revision: (.+) \044$/;
   $DBIx::Abstract::CVSVERSION = $1;
-  $DBIx::Abstract::LAST_CHANGE = $2;
+  q{$Date: 2000/04/17 23:16:32 $} =~ /^\044Date: (.+) \044$/;
+  $DBIx::Abstract::LAST_CHANGE = $1;
 }
 
 sub ___drivers {
@@ -215,13 +215,15 @@ sub clone {
   my $self = shift;
   my $class = ref($self);
   my $newself = {%$self};
+  delete($$newself{'CLONES'});
   bless $newself, $class;
   if (!$self->{'ORIG'}) {
     $newself->{'ORIG'} = $self;
   } else {
     $newself->{'ORIG'} = $self->{'ORIG'};
   }
-  push(@{$newself->{'ORIG'}{'CLONES'}},$newself);
+  push(@{$newself->{'ORIG'}->{'CLONES'}},$newself);
+
   $self->__logwrite(5,'Cloned');
   return $newself;
 }
@@ -1410,12 +1412,10 @@ will work with all drivers.)
 
 =over 2
 
-=item * Added ability to inserts with literal values.
-
-=item * Added select_one_to_array and select_one_to_arrayref.
-
-=item * Fixed a nasty little bug involving CLONES.  It had been failing to
-        register clones of clones.  This was causing a memory leak.
+=item * Fixed a problem with cloning.  Clones other then the first clone
+        were getting a copy of the clone list.  This caused unexpected calls
+        to the classes DESTROY method.  This produced warnings, but there
+        shouldn't have been any errors.
 
 =back
 

@@ -1,4 +1,10 @@
 Revision history for Perl extension DBIx::Abstract.
+0.93   2000-04-17
+        - Fixed a problem with cloning.  Clones other then the first clone
+          were getting a copy of the clone list.  This caused unexpected
+          calls to the classes DESTROY method.  This produced warnings, but
+          there shouldn't have been any errors.
+
 0.921  2000-04-07
         - Well I managed to check in the last version without including the
           bug fix.
