@@ -6,7 +6,7 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '1.000';
+  $DBIx::Abstract::VERSION = '1.001';
   ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.6 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
     q$Date: 2001/09/04 16:51:17 $ =~ /(\d+\/\S+ \d+:\S+)/;
@@ -103,7 +103,6 @@ sub connect {
     $self->{'connect'} = { dbh => 1 };
   }
   $self->{'dbh'} = $dbh;
-  $self->opt(AutoCommit=>$self->{'dbh'}->{'AutoCommit'});
   $self->opt(loglevel=>0);
   foreach (keys(%$options)) {
     $self->opt($_,$$options{$_});
@@ -175,7 +174,6 @@ sub reconnect {
   }
   $self->__logwrite(5,'reconnect','success');
   $self->{'dbh'} = $dbh;
-  $self->opt('AutoCommit',$self->{'dbh'}->{'AutoCommit'});
 
   my @tolog;
   foreach (qw( host port dbname user password )) {
@@ -251,23 +249,33 @@ sub clone {
   return $newself;
 }
 
-
+my %valid_opts = map( {$_=>1} qw(
+  loglevel logfile saveSQL useCached delaymods
+  ));
 sub opt {
   my($self,$key,$value) = @_;
   if (ref($key)) {
     $value = $$key{'value'};
     $key = $$key{'key'};
   }
-  my $ret = $self->{'options'}{$key};
+  my $ret;
+  if ($valid_opts{$key}) {
+    $ret = $self->{$key};
+  } elsif (exists($self->{'dbh'}{$key})) {
+    $ret = $self->{'dbh'}{$key};
+  } else {
+    die "DBIx::Abstract->opt Unknown option $key\n";
+  }
   if (defined($value)) {
-    if ($key eq 'AutoCommit') {
-      eval { $self->{'dbh'}->{'AutoCommit'} = $value };
+    if ($valid_opts{$key}) { 
+      $self->{'options'}{$key} = $value;
+    } else {
+      eval { $self->{'dbh'}->{$key} = $value };
       if ($@) {
         warn $@;
         return $ret;
       }
     }
-    $self->{'options'}{$key} = $value;
     $self->__logwrite(5,'Option change',$key?$key:'',$ret?$ret:'',$value?$value:'');
   }
   return $ret;
@@ -1107,10 +1115,6 @@ Set option $key to $value.  Available keys are:
     Delay making modifications to the database until
     run_delayed is run.
     
-  AutoCommit
-    This works just like the DBI 'AutoCommit', except that it issues a
-    warning (instead of dieing) if you give it bad data.
-    
   useCached
     If this is true then prepare_cached is used instead of prepare.
     Checkout the DBI documentation on this feature before using this
@@ -1119,6 +1123,9 @@ Set option $key to $value.  Available keys are:
   saveSQL
     If this is true then with each query DBIx::Abstract will stuff the generated
     SQL into the 'lastsql' key in the self payload.
+
+  Additionally you may use any valid DBI attribute.  So, for instance, you
+  can pass AutoCommit or LongReadLen.
 
 This operation is logged at level 5 with the message "Option Change" and the
 the key, the old value and new new value.
@@ -1457,9 +1464,13 @@ These drivers have been reported to work:
 
 =item * mysql (development environment)
 
-=item * Pg (with a pre-release version of DBIx::Abstract)
+=item * Pg (development environment)
+
+=item * Oracle
 
 =item * XBase
+
+=head2
 
 Any driver that uses ODBC syntax should work using the hash ref method. 
 With other drivers you should pass the DBI data source instead (this method
@@ -1471,12 +1482,7 @@ will work with all drivers.)
 
 =over 2
 
-=item * Now produces a better error that config/DSN is not defined.
-
-=item * When the DBIx::Abstract object is destroyed it usually closes any
-        associated database handles (if it's the last clone alive), now it
-        will only do this if it created the handle.  This way, if you pass
-        in a handle it will survive its use by DBIx::Abstract.
+=item * Made it so that opt can now take any DBI attribute.
 
 =head1 AUTHOR
 

@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::Abstract.
-1.00   2001-09-04
+1.001  2001-09-05
+       - Made it so that opt can now take any DBI attribute.
+
+1.000  2001-09-04
        - Now produces a better error that config/DSN is not defined.
        - When the DBIx::Abstract object is destroyed it usually closes any
          associated database handles (if it's the last clone alive), now it

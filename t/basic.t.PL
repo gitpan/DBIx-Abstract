@@ -12,7 +12,7 @@ my $dsn  = q{~~test_dsn~~};
 my $user = q{~~test_user~~} || undef;
 my $pass = q{~~test_pass~~} || undef;
 
-plan test => 19;
+plan test => 20;
 
 # 1
 eval {
@@ -144,11 +144,16 @@ eval {
 }; ok($@,'','good connected');
 
 # 18
+eval {
+    $dbh->opt('this_does_not_exist',7);
+}; ok($@?1:0,1,'invalid option');
+
+# 19
 eval { 
     $dbh->disconnect;
 }; ok($@,'','disconnect');
 
-# 19
+# 20
 eval { 
     $dbh->connected and die "ARGH!\n";
 }; ok($@,'','bad connected');
