@@ -1,4 +1,8 @@
 Revision history for Perl extension DBIx::Abstract.
+0.920  2000-04-04
+        - Added ability to inserts with literal values.
+        - Fixed some unpleasent memory leaks involving clones of clones.
+
 0.910  2000-03-31
         - Fixed bug in make test that caused it to fail when a password was
           needed for testing.  This didn't effect me as my database accepts

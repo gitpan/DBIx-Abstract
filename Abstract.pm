@@ -5,9 +5,9 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.91';
+  $DBIx::Abstract::VERSION = '0.92';
   q|
-$Id: Abstract.pm,v 1.14 2000/03/31 22:38:54 turner Exp $
+$Id: Abstract.pm,v 1.15 2000/04/04 15:50:45 turner Exp $
 | =~ m/,v ([\d.]+) (\d+.\d+.\d+ \d+:\d+:\d+) /;
   $DBIx::Abstract::CVSVERSION = $1;
   $DBIx::Abstract::LAST_CHANGE = $2;
@@ -67,7 +67,7 @@ sub connect {
       $data_source = ___drivers($$config{'driver'},$config);
     }
   } else {
-    warn "DBIx::Abstract->connect Config should be hashref.  Using scalar is depricated.\n";
+    warn "DBIx::Abstract->connect Config should be hashref.  Using scalar is deprecated.\n";
     $data_source = $config;
     $config = {};
   }
@@ -463,7 +463,6 @@ sub insert {
   # $table  == Name of table to update
   # $fields == A reference to a hash of field/value pairs containing the
   #            new values for those fields.
-  my($sql,@keys,@values,$i);
   my(@bind_params);
   if (ref($table)) {
     $fields = $$table{'fields'};
@@ -472,20 +471,25 @@ sub insert {
 
   $table or die 'DBIx::Abstract: insert must have table';
 
-  $sql = "INSERT INTO $table ";
+  my $sql = "INSERT INTO $table ";
   if (ref($fields) eq 'HASH') {
-    @keys = keys(%$fields); @values = values(%$fields);
+    my @keys = keys(%$fields);
+    my @values = values(%$fields);
     $#keys>-1 or die 'DBIx::Abstract: insert must have fields';
     $sql .= '(';
-    for ($i=0;$i<=$#keys;$i++) {
+    for (my $i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ',' }
       $sql .= ' '.$keys[$i];
     }
     $sql .= ') VALUES (';
-    for ($i=0;$i<=$#keys;$i++) {
+    for (my $i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ', ' }
-      $sql .= '?';
-      push(@bind_params,$values[$i]);
+      if (ref($values[$i]) eq 'ARRAY') {
+        $sql .= $values[$i][0];
+      } else {
+        $sql .= '?';
+        push(@bind_params,$values[$i]);
+      }
     }
     $sql .= ')';
   } elsif (!ref($fields) and $fields) {
@@ -503,35 +507,39 @@ sub replace {
   # $table  == Name of table to update
   # $fields == A reference to a hash of field/value pairs containing the
   #            new values for those fields.
-  my($sql,@keys,@values,$i);
   my(@bind_params);
   if (ref($table)) {
     $fields = $$table{'fields'};
     $table = $$table{'table'};
   }
 
-  $table or die 'DBIx::Abstract: replace must have table';
+  $table or die 'DBIx::Abstract: insert must have table';
 
-  $sql = "REPLACE INTO $table ";
+  my $sql = "REPLACE INTO $table ";
   if (ref($fields) eq 'HASH') {
-    @keys = keys(%$fields); @values = values(%$fields);
-    $#keys>-1 or die 'DBIx::Abstract: replace must have fields';
+    my @keys = keys(%$fields);
+    my @values = values(%$fields);
+    $#keys>-1 or die 'DBIx::Abstract: insert must have fields';
     $sql .= '(';
-    for ($i=0;$i<=$#keys;$i++) {
+    for (my $i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ',' }
       $sql .= ' '.$keys[$i];
     }
     $sql .= ') VALUES (';
-    for ($i=0;$i<=$#keys;$i++) {
+    for (my $i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ', ' }
-      $sql .= '?';
-      push(@bind_params,$values[$i]);
+      if (ref($values[$i]) eq 'ARRAY') {
+        $sql .= $values[$i][0];
+      } else {
+        $sql .= '?';
+        push(@bind_params,$values[$i]);
+      }
     }
     $sql .= ')';
   } elsif (!ref($fields) and $fields) {
     $sql .= $fields;
   } else {
-    die 'DBIx::Abstract: replace must have fields';
+    die 'DBIx::Abstract: insert must have fields';
   }
   $self->__logwrite_sql(1,$sql,@bind_params);
   $self->__mod_query($sql,@bind_params);
@@ -829,7 +837,7 @@ sub AUTOLOAD {
   # These are just space separated lists of methods that may be passed
   # through to the dbh or sth objects respectively.
   #
-  # If anything ends up in here we should probably make a seperate function
+  # If anything ends up in here we should probably make a separate function
   # for it (if only to keep the logging working properly).
   my $DBHVALIDMETHODS = 
        'disconnect '.
@@ -898,7 +906,7 @@ DBIx::Abstract - DBI SQL abstraction
 =head1 DESCRIPTION
 
 This module provides methods for doing manipulating database tables This
-module provides methods retreiving and storing data in SQL databases.
+module provides methods retrieving and storing data in SQL databases.
 It provides methods for all of the more important SQL commands (like
 SELECT, INSERT, REPLACE, UPDATE, DELETE).
 
@@ -1052,7 +1060,7 @@ L<"DBIx::Abstract Where Clauses">.
 $table is the name of the table to insert into.
 
 $fields is either a reference to a hash of field name/value or
-a scalar containg the SQL to insert after the "SET" portion of the statement.
+a scalar containing the SQL to insert after the "SET" portion of the statement.
 
 These all produce functionally equivalent SQL.
 
@@ -1060,6 +1068,16 @@ These all produce functionally equivalent SQL.
   $db->insert('foo',q|bar='baz'|);
   $db->insert({table=>'foo',fields=>{bar=>'baz'}});
   $db->insert({table=>'foo',fields=>q|bar='baz'|});
+
+We also support literals by making the value in the hash an arrayref:
+
+  $db->insert('foo',{name=>'bar',date=>['substring(now(),1,10)']});
+
+Would generate something like this:
+
+  INSERT INTO foo (name,date) VALUES (?,substring(now(),1,10))
+
+With "bar" bound to the first parameter.
   
 
 =head2 replace
@@ -1071,7 +1089,7 @@ These all produce functionally equivalent SQL.
 $table is the name of the table to replace into.
 
 $fields is either a reference to a hash of field name/value or
-a scalar containg the SQL to insert after the "SET" portion of the statement.
+a scalar containing the SQL to insert after the "SET" portion of the statement.
 
 Replace works just like insert, except that if a record with the same
 primary key already exists then the existing record is replaced, instead of
@@ -1176,7 +1194,7 @@ This is just a call to the DBI method.
 
 =head2 fetchrow_hash
 
-This calls fetchrow_hashref and deferences it for you.
+This calls fetchrow_hashref and dereferences it for you.
 
 =head2 fetchrow_array
 
@@ -1300,7 +1318,7 @@ These drivers have been reported to work:
 
 =item * mysql (development environment)
 
-=item * Pg (with a prerelease version of DBIx::Abstract)
+=item * Pg (with a pre-release version of DBIx::Abstract)
 
 =item * XBase
 
@@ -1314,12 +1332,9 @@ will work with all drivers.)
 
 =over 2
 
-=item * Fixed bug in make test that caused it to fail when a password was
-        needed for testing.  This didn't effect me as my database accepts
-        anonymous connections to the test database over loopback.
+=item * Added ability to inserts with literal values.
 
-=item * Fixed some warnings when username or password were undefined.
-
+=item * Fixed some unpleasent memory leaks involving clones of clones.
 
 =back
 
