@@ -1,15 +1,16 @@
-# $Id: Abstract.pm,v 1.8 2002/09/24 05:03:06 daerr Exp $
+# $Id: Abstract.pm,v 1.10 2003/02/18 03:23:58 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
+use Scalar::Util 'weaken';
 use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '1.003';
-  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.8 $ =~ /(\d+\.[\d.]+)/;
+  $DBIx::Abstract::VERSION = '1.004';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.10 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
-    q$Date: 2002/09/24 05:03:06 $ =~ /(\d+\/\S+ \d+:\S+)/;
+    q$Date: 2003/02/18 03:23:58 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {
@@ -126,6 +127,7 @@ sub connect {
   push(@log,'user=>',$user) if defined($user);
   push(@log,'password=>',$pass) if defined($pass);
   $self->__logwrite(5,'Connect',@log);
+  $self->{'Active'} = 1;
   return $self;
 }
 
@@ -134,8 +136,8 @@ sub ensure_connection {
   my $result = 0;
   my $connected = $self->connected;
   if ($self->connected) {
-    ($result) = $self->select('1')->fetchrow_array;
-    $self->disconnect unless $result;
+    eval { ($result) = $self->select('1')->fetchrow_array };
+    eval { $self->disconnect unless $result };
   }
   unless ($result) {
     $result = $self->reconnect;
@@ -160,8 +162,14 @@ sub ensure_connection {
 }
 
 sub connected {
-  my($self) = @_;
-  my $connected = eval { ($self->{'dbh'} and $self->{'dbh'}->{'Active'}) };
+  my $self = shift;
+  my $connected;
+  # Some drivers (mysqlPP) don't properly record their Active status.
+  if ($self->{'dbh'}->{'Driver'}->{'Name'} eq 'mysqlPP') {
+    $connected = eval { ($self->{'dbh'} and $self->{'Active'}) };
+  } else {
+    $connected = eval { ($self->{'dbh'} and $self->{'dbh'}->{'Active'}) };
+  }
   $connected = 0 if $@;
   $self->__logwrite(5,'connected',$connected);
   return $connected;
@@ -188,6 +196,7 @@ sub reconnect {
     push(@tolog, $self->{'connect'}{$_}) if $self->{'connect'}{$_};
   }
   $self->__logwrite(5,'Reconnect',@tolog);
+  $self->{'Active'} = 1;
   return $self;
 }
 
@@ -251,7 +260,10 @@ sub clone {
   } else {
     $newself->{'ORIG'} = $self->{'ORIG'};
   }
+  weaken($newself->{'ORIG'});
+
   push(@{$newself->{'ORIG'}->{'CLONES'}},$newself);
+  weaken($newself->{'ORIG'}->{'CLONES'}[$#{$newself->{'ORIG'}->{'CLONES'}}]);
 
   $self->__logwrite(5,'Cloned');
   return $newself;
@@ -780,15 +792,17 @@ sub select_one_to_hashref {
   $self->__logwrite(2,'select_one_to_hashref');
   $db->select(@_);
   my $result = $db->fetchrow_hashref;
+  return undef unless $result;
   return {%$result};
 }
 
 sub select_one_to_arrayref {
   my $self = shift;
   my $db = $self->clone;
-  $self->__logwrite(2,'select_one_to_arrayref');
+  $self->__logwrite(2,'select_one _to_arrayref');
   $db->select(@_);
   my $result = $db->fetchrow_arrayref;
+  return undef unless $result;
   return [@$result];
 }
 
@@ -798,6 +812,7 @@ sub select_one_to_array {
   $self->__logwrite(2,'select_one_to_arrayref');
   $db->select(@_);
   my $result = $db->fetchrow_arrayref;
+  return undef unless $result;
   return @$result;
 }
 
@@ -811,6 +826,7 @@ sub select_all_to_hashref {
   $self->__logwrite(2,'select_all_to_hash');
   $db->select(@_);
   my $result = $db->fetchall_arrayref();
+  return undef unless $result;
   my %to_ret;
   foreach (@$result) {
     if ($#$_>1) {
@@ -940,6 +956,12 @@ sub quote {
   $self->{'dbh'}->quote(@_);
 }
 
+sub disconnect {
+  my $self = shift;
+  $self->{'Active'} = 0;
+  return $self->{'dbh'}->disconnect();
+}
+
 sub AUTOLOAD {
   ### This will delegate calls for selected methods from the DBH and STH
   ### objects.  This allows users limited access to their functionality.
@@ -955,7 +977,6 @@ sub AUTOLOAD {
   # If anything ends up in here we should probably make a separate function
   # for it (if only to keep the logging working properly).
   my $DBHVALIDMETHODS = 
-       'disconnect '.
        'commit '.
        'rollback '.
        'trace';
@@ -1233,6 +1254,9 @@ C<select>
 
 ({fields=>$fields,table=>$table[,where=>$where][,order=>$order][,join=>$join][,group=>$group]})
 
+The select method returns the DBIx::Abstract object it was invoked with. 
+This allows you to chain commands.
+
 $fields can be either an array reference or a scalar.  If it is an array
 reference then it should be a list of fields to include.  If it is a scalar
 then it should be a literal to be inserted into the generated SQL after
@@ -1490,13 +1514,18 @@ will work with all drivers.)
 
 =over 2
 
-=item * Fixed Win32 bug found by Kanji T Bates.
+=item * ensure_connect did not work correctly if DBI was set to die on
+        errors.
 
-=item * Connect for oracle can look a bit more like those for other DBD
-        drivers now.  You may now speicify your SID in the dbname field.
+=item * Back ported test suite and makefile from 1.1.  Back ported patch to
+        fix mysqlPP compatibility issues.
 
-=item * Fixed bug introduced in 1.001 where trying to read ->opt always
-        produced undef.
+=item * Made clone weaken references it takes so that it won't leak memory. 
+        Added memory leak test.
+
+=item * A bug fix relating to select_one_* and select_all_* where if the
+        query failed and returned undef, the routine would crash.  This is
+        now fixed and it just propagates the undef.
 
 =head1 AUTHOR
 

@@ -1,120 +1,98 @@
-use Getopt::Long ();
+use strict;
+BEGIN { $^W = 1 } # use warnings in Perl 5.6 parlance
 use ExtUtils::MakeMaker qw( prompt WriteMakefile );
-use lib "lib";
-use ExtUtils::PerlPP ();
+use Config ();
+use Getopt::Long();
+use Data::Dumper ();
 
-use vars qw( $options );
+my $TESTDB  = "test";
+my $TESTDRIVER = "mysql";
 
-$options = { 'prompt' => 1 };
+use vars qw($opt);
+$opt =
+  { "help" => \&Usage,
+  };
+Getopt::Long::GetOptions($opt, "help", "testdb=s", "testhost=s",
+			 "testport=s", "testdsn=s", "testdriver=s",
+			 "testuser=s", "testpassword=s",
+			 );
+my $source = {};
 
-{
-    Getopt::Long::GetOptions($options, qw(
-        help verbose noprompt prompt! 
-        test-dsn=s
-        test-user=s
-        test-pass=s
-        ));
-
-    if ($options->{'help'}) {
-        print <<'EOF';
-Usage: perl Makefile.PL <options>
-
-Possible Options are:
-
-  --verbose     Enable verbose mode
-  --noprompt    Disable interactive dialog
-
-  --test-dsn=dsn        Sets data source for testing.  Uses dbi:mysql:test
-                        by default.
-  --test-user=user      Username and password to use with the dsn above
-  --test-pass=password  during testing.  They both default to undef.
-EOF
-        exit 1;
-    }
-    eval 'use Data::Dumper';
-    if ($@) {               
-        print q{
-You don't have installed the Data::Dumper module, which is
-required for building this package. Missing modules are available
-from any CPAN mirror, for example
-
-   ftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module
-  
-};
-        exit 1;
-    }          
-    if (!$$options{'test-dsn'}) {
-        $$options{'test-dsn'} = 'dbi:mysql:test';
-        $$options{'test-user'} = 'undef';
-        $$options{'test-pass'} = 'undef';
-        if ($$options{'prompt'}) {
-            $$options{'test-dsn'} = prompt(
-	            "Which data source should I use for testing the module?",
-                $$options{'test-dsn'});
-            $$options{'test-user'} = prompt(
-	            "Which username should I use for testing the module?",
-                $$options{'test-user'});
-            $$options{'test-pass'} = prompt(
-	            "Which password should I use for testing the module?",
-                $$options{'test-pass'});
-        }
-        $$options{'test-user'} = undef if $$options{'test-user'} eq 'undef';
-        $$options{'test-pass'} = undef if $$options{'test-pass'} eq 'undef';
-    }
-    $Data::Dumper::Indent = 1;
-    my $config;
-    foreach my $key (keys(%$options)) {
-        $newkey = $key;
-        $newkey =~ s/-/_/g;
-        $$config{$newkey} = $$options{$key};
-    }
-    my $cf = Data::Dumper::Dumper($config);
-    my $time = localtime();
-    my $cfg_file = <<"CFG_FILE";
-# -*- perl -*-
-#
-#    This file was automatically generated at $time
-#    by Makefile.PL. Do not edit, instead do a "make realclean" in
-#    the toplevel directory and rerun "perl makefile.PL".
-#
-
-my $cf
-CFG_FILE
-    open(CFG_FILE,">config.pl");
-    print CFG_FILE $cfg_file;
-    close(CFG_FILE);
+foreach my $key (qw/testdsn testdriver testdb testhost testport testuser testpassword/) {
+  Configure($opt, $source, $key);
 }
 
+print <<"MSG";
+I will use the following settings for compiling and testing:
 
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+MSG
+
+delete $opt->{'help'};
+my $keylen = 0;
+foreach my $key (keys %$opt) {
+  $keylen = length($key) if length($key) > $keylen;
+}
+my $slen = 0;
+foreach my $val (values %$source) {
+  $slen = length($val) if length($val) > $slen;
+}
+foreach my $key (sort { $a cmp $b} keys %$opt) {
+  printf("  %-" . $keylen . "s (%-" . $slen . "s) = %s\n",
+	 $key, $source->{$key}, $opt->{$key})
+}
+
+print <<"MSG";
+
+To change these settings, see 'perl Makefile.PL --help'.
+
+MSG
+
+#sleep 5;
+
+eval { require File::Spec };
+my $fileName = $@ ?
+  "t/dbia.config" : File::Spec->catfile("t", "dbia.config");
+die "Failed to determine location of $fileName" unless -f $fileName;
+if (open(FILE, ">$fileName")) {
+    print FILE "{ my " . Data::Dumper->Dump([$opt], ["opt"]) .
+               "  sub load_all { return (\n".
+               "      driver   => \$opt->{'testdriver'},\n" .
+               "      host     => \$opt->{'testhost'},\n" .
+               "      port     => \$opt->{'testport'},\n" .
+               "      user     => \$opt->{'testuser'},\n" .
+               "      password => \$opt->{'testpassword'},\n" .
+               "      db       => \$opt->{'testdb'},\n" .
+               "      dsn      => \$opt->{'testdsn'},\n" .
+               "      ) }\n".
+               "} 1;\n";
+    close(FILE) or die "Failed to create $fileName: $!";
+}
+
 WriteMakefile(
-    'NAME'          => 'DBIx::Abstract',
-    'DISTNAME'      => 'DBIx-Abstract',
-    'PREREQ_PM'     => { 'DBI' => 0 },
-    'VERSION_FROM'  => 'Abstract.pm', # finds $VERSION
-    'PM'            => {'Abstract.pm'=>'blib/lib/DBIx/Abstract.pm'},
-    'linkext'       => { LINKTYPE=>'' },
+    'NAME'		=> 'DBIx::Abstract',
+    'VERSION_FROM'	=> 'Abstract.pm', 
+    'PREREQ_PM'		=> {
+        'DBI'              => 0,
+        'Test::More'       => 0,
+        'ExtUtils::PerlPP' => 0,
+        },
     'dist'          => {'COMPRESS'=>'gzip -9f', 'SUFFIX' => 'gz'},
-    'clean'         => {FILES=>'config.pl t/basic.t test.log'},
-    'PL_FILES'      => {'t/basic.t.PL','t/basic.t'},
+    'clean'         => {FILES=>'config.pl t/3.t test.log'},
+    ($ExtUtils::MakeMaker::VERSION >= 5.43 ?
+      (ABSTRACT_FROM => 'Abstract.pm', # retrieve abstract from module
+       AUTHOR        => 'Andy Turner <turnera@cpan.org>') : ()),
 );
 
-package MY;
+{
 
-sub libscan {
-    my($self, $path) = @_;
-    if ($path =~ /(PerlPP\.pm|Config\.pm|Install\.pm|,v|~)$/) { return undef; }
-    $path;                                                                     
-}
+package MY;
 
 sub processPL {
     my($self) = shift;
     my @output;
-    my @files = %{$self->{'PL_FILES'}};
-    while (@files) {
-        my $from = shift @files;
-        my $to = shift @files;  
+    foreach (keys(%{$self->{'PL_FILES'}})) {
+        my $from = $_;
+        my $to = $self->{'PL_FILES'}{$_};
         my $cfg = 'config.pl';
         push(@output, qq|
 pm_to_blib: $to
@@ -128,4 +106,64 @@ $to: $from
     }
     join('', @output);
 }
+
+}
+
+sub Configure {
+    my($opt, $source, $param) = @_;
+
+    if (exists($opt->{$param})) {
+        $source->{$param} = "Users choice";
+        return;
+    }
+
+    if ($param eq "testdriver") {
+        $source->{$param} = "default";
+        $opt->{$param} = $TESTDRIVER;
+    } elsif ($param eq "testdb") {
+        $source->{$param} = "default";
+        $opt->{$param} = $TESTDB;
+    } elsif ($param eq "testuser"  || $param eq "testpassword" || 
+             $param eq "testdsn" || $param eq "testhost" ||
+             $param eq "testport") {
+        $source->{$param} = "default";
+        $opt->{$param} = "";
+    } else {
+        die "Unknown configuration parameter: $param";
+    }
+}
+
+
+sub Usage {
+  print STDERR <<"USAGE";
+Usage: perl $0 [options]
+
+Possible options are:
+
+  --testdsn=<db>         Use the DBI datasource <dsn> for running the test suite
+
+  Or you can connect with these:
+
+  --testdriver=<driver>  Use the DBD driver <driver> for running the test
+                         suite; defaults to $TESTDRIVER
+  --testdb=<db>          Use the database <db> for running the test suite;
+                         defaults to $TESTDB
+  --testhost=<host>      Use <host> as a database server for running the
+                         test suite; the default is not to specify one
+  --testport=<port>      Use <port> as the port number of the database;
+                         the default is not to specify one
+
+  --testuser=<user>      Use the username <user> for running the test suite;
+                         defaults to no username
+  --testpassword=<pwd>   Use the password <pwd> for running the test suite;
+                         defaults to no password
+
+  --help                 Print this message and exit
+
+USAGE
+  exit 1;
+}
+
+
+__END__
 
