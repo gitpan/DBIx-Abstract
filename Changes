@@ -1,4 +1,8 @@
 Revision history for Perl extension DBIx::Abstract.
+0.96   2001-07-07
+       - Fixed stupid bug that made it not accept DBI handles.  I can't
+         believe I actually took eight months to check this in.
+
 0.95   2000-11-12
        - Changed how CVSVERSION and LAST_CHANGE are calculated.             
        - Made it so that you can pass routines literal strings instead of

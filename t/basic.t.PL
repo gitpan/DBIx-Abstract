@@ -12,7 +12,7 @@ my $dsn  = q{~~test_dsn~~};
 my $user = q{~~test_user~~} || undef;
 my $pass = q{~~test_pass~~} || undef;
 
-plan test => 17;
+plan test => 18;
 
 eval {
     require DBIx::Abstract;
@@ -27,6 +27,12 @@ eval {
         dsn=>$dsn,user=>$user,password=>$pass,
     });
 }; ok(ref($dbh), 'DBIx::Abstract', 'connect dbname');
+
+eval {
+    $dbh->disconnect if $dbh;
+    my $dbi = DBI->connect($dsn,$user,$pass);
+    $dbh = DBIx::Abstract->connect($dbi);
+}; ok(ref($dbh), 'DBIx::Abstract', 'connect with dbi object');
 
 eval {
     $dbh->disconnect if $dbh;
@@ -88,7 +94,7 @@ eval {
 
 eval {
     $dbh->select({
-        fields=>'*',
+        fields=>'count(foo.id)',
         tables=>'foo,bar',       
         'join'=>[
                  'foo.id = bar.foo_id', 

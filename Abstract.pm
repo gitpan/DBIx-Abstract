@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.3 2001/02/08 20:58:49 daerr Exp $
+# $Id: Abstract.pm,v 1.4 2001/07/07 13:32:50 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -6,10 +6,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.95';
-  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.3 $ =~ /(\d+\.[\d.]+)/;
+  $DBIx::Abstract::VERSION = '0.96';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.4 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
-    q$Date: 2001/02/08 20:58:49 $ =~ /(\d+\/\S+ \d+:\S+)/;
+    q$Date: 2001/07/07 13:32:50 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {
@@ -65,10 +65,12 @@ sub connect {
 
       $data_source = ___drivers($$config{'driver'},$config);
     }
-  } elsif (UNIVERSAL::isa($config,'DBI')) {
+  } elsif (UNIVERSAL::isa($config,'DBI::db')) {
     $dbh = $config;
+  } elsif (ref($config)) {
+    die "DBIx::Abstract->connect Config must be a hashref or a DBI object, not a ".ref($config)."ref\n";
   } else {
-    warn "DBIx::Abstract->connect Config should be hashref.  Using scalar is deprecated.\n";
+    warn "DBIx::Abstract->connect Config should be hashref or a DBI object.  Using scalar is deprecated.\n";
     $data_source = $config;
     $config = {};
   }
@@ -1455,19 +1457,8 @@ will work with all drivers.)
 
 =over 2
 
-=item * Changed how CVSVERSION and LAST_CHANGE are calculated.             
-
-=item * Made it so that you can pass routines literal strings instead of
-        variables (variables are used with bind_params when possbile) by
-        passing a scalar reference.
-
-=item * I also allow array references to do this (in some circumstances)
-        but this is depricated.
-
-=item * Made connect optionally accept DBI handles instead of connection
-        info, by recommendation of Mark Stosberg <mark@summersault.com>.
-
-=back
+=item * Fixed stupid bug that made it not accept DBI handles.  I can't
+        believe I actually took eight months to check this in.
 
 =head1 AUTHOR
 
@@ -1476,6 +1467,8 @@ Andrew Turner <turnera@cpan.org>
 =head1 COPYRIGHT
 
 (C) Copyright 1998-2000 MINT
+(C) Copyright 2000-2001 Adelphia
+(C) Copyright 2001 Andrew Turner
 
 This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.
