@@ -5,9 +5,9 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.92';
+  $DBIx::Abstract::VERSION = '0.921';
   q|
-$Id: Abstract.pm,v 1.15 2000/04/04 15:50:45 turner Exp $
+$Id: Abstract.pm,v 1.19 2000/04/07 16:27:03 turner Exp $
 | =~ m/,v ([\d.]+) (\d+.\d+.\d+ \d+:\d+:\d+) /;
   $DBIx::Abstract::CVSVERSION = $1;
   $DBIx::Abstract::LAST_CHANGE = $2;
@@ -173,11 +173,20 @@ sub reconnect {
 
 sub DESTROY {
   my $self = shift;
-  $self->finish if $self->{'sth'};
+  if ($self->{'DESTRUCTION'}) {
+    return -1;
+  }
+  $self->{'DESTRUCTION'} = 1 ;
   if (!$self->{'ORIG'}) {
     if ($self->{'CLONES'}) {
       foreach (@{$self->{'CLONES'}}) {
-        $_->DESTROY if ref($_);
+        if (ref($_)) {
+          if ($_->DESTROY == -1) {
+            warn "Error: DBIx::Abstract tried to recurse into $_ from $self during DESTROY \n";
+          }
+        } else {
+          warn "Error: DBIx::Abstract clone not object\n";
+        }
         $_=undef;
       }
     }
@@ -185,30 +194,34 @@ sub DESTROY {
   } else {
     my $new;
     foreach (@{$self->{'ORIG'}->{'CLONES'}}) {
-      push(@$new,$_) if ($self ne $_);
+      if ($self ne $_) {
+        push(@$new,$_);
+      }
     }
     $self->{'ORIG'}->{'CLONES'} = $new;
   }
   $self->{'sth'}->finish if $self->{'sth'};
-  $self->{'dbh'} = undef;
-  $self->{'sth'} = undef;
-#  $self->{'connect'} = undef;
-  $self->{'options'} = undef;
-  $self->{'MODQUERY'} = undef;
-  $self->{'ORIG'} = undef;
-  $self->{'CLONES'} = undef;
+  delete($self->{'dbh'});
+  delete($self->{'sth'});
+#  delete($self->{'connect'});
+  delete($self->{'options'});
+  delete($self->{'MODQUERY'});
+  delete($self->{'ORIG'});
+  delete($self->{'CLONES'});
+  return 0;
 }
 
 sub clone {
   my $self = shift;
   my $class = ref($self);
-  my $newself = {};
+  my $newself = {%$self};
   bless $newself, $class;
-  %$newself = %$self;
   if (!$self->{'ORIG'}) {
     $newself->{'ORIG'} = $self;
+  } else {
+    $newself->{'ORIG'} = $self->{'ORIG'};
   }
-  push(@{$newself->{'CLONES'}},$newself);
+  push(@{$newself->{'ORIG'}{'CLONES'}},$newself);
   $self->__logwrite(5,'Cloned');
   return $newself;
 }
@@ -692,11 +705,28 @@ sub select_one_to_hashref {
   # on the current query, and don't keep the new
   # one around.
   my $db = $self->clone;
-  $self->__logwrite(2,'select_one_to_hash');
+  $self->__logwrite(2,'select_one_to_hashref');
   $db->select(@_);
   my $result = $db->fetchrow_hashref;
-  $db = undef;
   return {%$result};
+}
+
+sub select_one_to_arrayref {
+  my $self = shift;
+  my $db = $self->clone;
+  $self->__logwrite(2,'select_one_to_arrayref');
+  $db->select(@_);
+  my $result = $db->fetchrow_arrayref;
+  return [@$result];
+}
+
+sub select_one_to_array {
+  my $self = shift;
+  my $db = $self->clone;
+  $self->__logwrite(2,'select_one_to_arrayref');
+  $db->select(@_);
+  my $result = $db->fetchrow_arrayref;
+  return @$result;
 }
 
 sub select_all_to_hashref {
@@ -725,7 +755,11 @@ sub select_all_to_hashref {
 sub fetchrow_hashref {
   my($self) = @_;
   $self->__logwrite(4,'fetchrow_hashref');
-  return $self->{'sth'}->fetchrow_hashref;
+  my $row = $self->{'sth'}->fetchrow_hashref;
+  unless (defined($row)) {
+      $self->{'sth'}->finish;
+  }
+  return $row;
 }
 
 sub fetchrow_hash {
@@ -742,13 +776,21 @@ sub fetchrow_hash {
 sub fetchrow_arrayref {
   my($self) = @_;
   $self->__logwrite(4,'fetchrow_arrayref');
-  return $self->{'sth'}->fetchrow_arrayref;
+  my $row = $self->{'sth'}->fetchrow_arrayref;
+  unless (defined($row)) {
+      $self->{'sth'}->finish;
+  }
+  return $row;
 }
 
 sub fetchrow_array {
   my($self) = @_;
   $self->__logwrite(4,'fetchrow_array');
-  return $self->{'sth'}->fetchrow_array;
+  my @row = $self->{'sth'}->fetchrow_array;
+  if ($#row == -1) {
+      $self->{'sth'}->finish;
+  }
+  return @row;
 }
 
 sub fetchall_arrayref {
@@ -1169,6 +1211,42 @@ $table is the table to select from.
 
 See also the documentation on L<"DBIx::Abstract Where Clauses">.
 
+=head2 select_one_to_arrayref
+
+($fields,$table[,$where])
+
+({fields=>$fields,table=>$table[,where=>$where]})
+
+This returns a arrayref to the first record returned by the select. 
+Typically this should be used for cases when your where clause limits you to
+one record anyway.
+
+$fields is can be either a array reference or a scalar.  If it is an array
+reference then it should be a list of fields to include.  If it is a scalar
+then it should be a literal to be inserted into the generated SQL.
+
+$table is the table to select from.
+
+See also the documentation on L<"DBIx::Abstract Where Clauses">.
+
+=head2 select_one_to_array
+
+($fields,$table[,$where])
+
+({fields=>$fields,table=>$table[,where=>$where]})
+
+This returns a array to the first record returned by the select. 
+Typically this should be used for cases when your where clause limits you to
+one record anyway.
+
+$fields is can be either a array reference or a scalar.  If it is an array
+reference then it should be a list of fields to include.  If it is a scalar
+then it should be a literal to be inserted into the generated SQL.
+
+$table is the table to select from.
+
+See also the documentation on L<"DBIx::Abstract Where Clauses">.
+
 =head2 select_all_to_hashref
 
 ($fields,$table[,$where])
@@ -1240,7 +1318,7 @@ This method is passed to the statement handle via AUTOLOAD.
 
 This method is passed to the statement handle via AUTOLOAD.
 
-=head1 Other things that need explaination
+=head1 Other things that need explanation
 
 =head2 DBIx::Abstract Where Clauses
 
@@ -1334,7 +1412,10 @@ will work with all drivers.)
 
 =item * Added ability to inserts with literal values.
 
-=item * Fixed some unpleasent memory leaks involving clones of clones.
+=item * Added select_one_to_array and select_one_to_arrayref.
+
+=item * Fixed a nasty little bug involving CLONES.  It had been failing to
+        register clones of clones.  This was causing a memory leak.
 
 =back
 

@@ -1,7 +1,13 @@
 Revision history for Perl extension DBIx::Abstract.
-0.920  2000-04-04
+0.921  2000-04-07
+        - Well I managed to check in the last version without including the
+          bug fix.
+        - Added select_one_to_array and select_one_to_arrayref.
+        - Fixed a nasty little bug involving CLONES.  It had been failing to
+          register clones of clones.  This was causing a memory leak.
+
+0.920  2000-04-07
         - Added ability to inserts with literal values.
-        - Fixed some unpleasent memory leaks involving clones of clones.
 
 0.910  2000-03-31
         - Fixed bug in make test that caused it to fail when a password was
@@ -19,7 +25,7 @@ Revision history for Perl extension DBIx::Abstract.
 
 0.079  2000-03-03
         - Fixed a bug where an empty where would produce invalid SQL.
-        - Fixed a bug that cuased death under S
+        - Fixed a bug that caused death under S
 
 0.078  2000-02-18
         - Added 'saveSQL' option which, with each query, stuffs the generated
@@ -84,11 +90,11 @@ Revision history for Perl extension DBIx::Abstract.
           connected before.
         - Added method ``ensure_connection''.  Ensures that the object is
           connected and that the connection is valid (by doing a ``SELECT
-          1'').  Trys to reconnect if it isn't connected.  Dies if it is
+          1'').  Tries to reconnect if it isn't connected.  Dies if it is
           unable to provide a connection.
         - Changed select so that table is optional.  That is, db->select(1)
           will produce ``SELECT 1'' instead of ``SELECT 1 FROM''
-        - Updated documentation to relfect that loglevel 0 is used for fatal 
+        - Updated documentation to reflect that loglevel 0 is used for fatal 
           errors.
 
 0.06 1999-04-23
@@ -140,7 +146,7 @@ Revision history for Perl extension DBIx::Abstract.
           however if it isn't then i will remove it.  (So don't use it yet!)
         - Removed undocumented "join" feature of select.  It was possible to
           do it without an extra feature.
-        - Made all functions accept hashes as well as paremeter lists.  This
+        - Made all functions accept hashes as well as parameter lists.  This
           will be reaching the documentation in the next release, once it's
           a bit more polished.
 
