@@ -12,7 +12,7 @@ my $dsn  = q{~~test_dsn~~};
 my $user = q{~~test_user~~} || undef;
 my $pass = q{~~test_pass~~} || undef;
 
-plan test => 18;
+plan test => 17;
 
 eval {
     require DBIx::Abstract;
@@ -24,21 +24,19 @@ eval {
 
 eval {
     $dbh = DBIx::Abstract->connect({
-        dsn=>$dsn,user=>$user,pass=>$pass,
+        dsn=>$dsn,user=>$user,password=>$pass,
     });
 }; ok(ref($dbh), 'DBIx::Abstract', 'connect dbname');
 
 eval {
     $dbh->disconnect if $dbh;
     $dbh = DBIx::Abstract->connect({
-        dsn=>$dsn,user=>$user,pass=>$pass,
+        dsn=>$dsn,user=>$user,password=>$pass,
+    },{
+      loglevel=>5,
+      logfile=>'test.log',
     });
 }; ok($@ || ref($dbh), 'DBIx::Abstract', 'connect db');
-
-eval {
-    $dbh->opt(loglevel=>5) if $dbh;
-    $dbh->opt(logfile=>'test.log') if $dbh;
-}; ok($@?0:1,1,'log sql');
 
 eval {
     $dbh->disconnect if $dbh;

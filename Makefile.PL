@@ -55,7 +55,7 @@ from any CPAN mirror, for example
 	            "Which username should I use for testing the module?",
                 $$options{'test-user'});
             $$options{'test-pass'} = prompt(
-	            "Which passwordshould I use for testing the module?",
+	            "Which password should I use for testing the module?",
                 $$options{'test-pass'});
         }
         $$options{'test-user'} = undef if $$options{'test-user'} eq 'undef';

@@ -1,4 +1,10 @@
 Revision history for Perl extension DBIx::Abstract.
+0.910  2000-03-31
+        - Fixed bug in make test that caused it to fail when a password was
+          needed for testing.  This didn't effect me as my database accepts
+          anonymous connections to the test database over loopback.
+        - Fixed some warnings when username or password were undefined.
+
 0.900  2000-03-03
         - Changed name to DBIx::Abstract in preparation for addition to
           CPAN.

@@ -5,9 +5,9 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.90';
+  $DBIx::Abstract::VERSION = '0.91';
   q|
-$Id: Abstract.pm,v 1.5 2000/03/04 00:36:21 turner Exp $
+$Id: Abstract.pm,v 1.14 2000/03/31 22:38:54 turner Exp $
 | =~ m/,v ([\d.]+) (\d+.\d+.\d+ \d+:\d+:\d+) /;
   $DBIx::Abstract::CVSVERSION = $1;
   $DBIx::Abstract::LAST_CHANGE = $2;
@@ -47,12 +47,14 @@ sub new {
 
 sub connect {
   my($class,$config,$options) = @_;
-  my($dbh,$data_source);
+  my($dbh,$data_source,$user,$pass);
   my $self = {};
   
   if (ref($config) eq 'HASH') {
+    $user = $$config{'user'} || $$config{'username'};
+    $pass = $$config{'password'} || $$config{'pass'};
     if (!defined($$config{'user'}) && $$config{'password'}) {
-      $$config{'password'} = undef 
+      $$config{'password'} = undef;
     }
     if (exists($$config{'dsn'})) {
       $data_source = $$config{'dsn'};
@@ -65,13 +67,13 @@ sub connect {
       $data_source = ___drivers($$config{'driver'},$config);
     }
   } else {
-    warn "SQL::DBI->connect Config should be hashref.  Using scalar is depricated.\n";
+    warn "DBIx::Abstract->connect Config should be hashref.  Using scalar is depricated.\n";
     $data_source = $config;
     $config = {};
   }
 
   if ($data_source) {
-    $dbh = DBI->connect($data_source,$$config{'user'},$$config{'password'});
+    $dbh = DBI->connect($data_source,$user,$pass);
   } else {
     die "Could not understand data source: $data_source\n";
   }
@@ -83,24 +85,27 @@ sub connect {
     dbname              => $$config{'dbname'},
     host                => $$config{'host'},
     port                => $$config{'port'},
-    user                => $$config{'user'},
-    password            => $$config{'password'},
+    user                => $user,
+    password            => $pass,
     data_source         => $data_source,
   };
   $self->{'dbh'} = $dbh;
-  $self->opt('AutoCommit',$self->{'dbh'}->{'AutoCommit'});
+  $self->opt(AutoCommit=>$self->{'dbh'}->{'AutoCommit'});
   $self->opt(loglevel=>0);
   foreach (keys(%$options)) {
     $self->opt($_,$$options{$_});
   }
+  my @log;
   if (exists($$config{'dsn'})) {
-    $self->__logwrite(5,'Connect',$$config{'dsn'},
-      $$config{'user'},$$config{'password'});
+    push(@log,'dsn=>'.$data_source) if defined($data_source);
   } else {
-    $self->__logwrite(5,'Connect',$$config{'driver'},
-      $$config{'host'},$$config{'port'},$$config{'db'},
-      $$config{'user'},$$config{'password'});
+    foreach (qw( driver host port db )) {
+      push(@log,$_.'=>'.$$config{$_}) if defined($$config{$_});
+    }
   }
+  push(@log,'user=>',$user) if defined($user);
+  push(@log,'password=>',$pass) if defined($pass);
+  $self->__logwrite(5,'Connect',@log);
   return $self;
 }
 
@@ -172,7 +177,7 @@ sub DESTROY {
   if (!$self->{'ORIG'}) {
     if ($self->{'CLONES'}) {
       foreach (@{$self->{'CLONES'}}) {
-        $_->DESTROY;
+        $_->DESTROY if ref($_);
         $_=undef;
       }
     }
@@ -278,9 +283,9 @@ sub __mod_query {
 
 sub query {
   my($self,$sql,@bind_params) = @_;
-  if (ref($sql)) {
-    $sql = $$sql{'sql'};
+  if (ref($sql) eq 'HASH') {
     @bind_params = @{$$sql{'bind_params'}};
+    $sql = $$sql{'sql'};
   }
   $self->__logwrite_sql(3,$sql,@bind_params);
   return $self->__literal_query($sql,@bind_params);
@@ -807,6 +812,11 @@ sub numrows {
   return $self->rows(@_);
 }
 
+sub quote {
+  my($self) = shift;
+  $self->{'dbh'}->quote(@_);
+}
+
 sub AUTOLOAD {
   ### This will delegate calls for selected methods from the DBH and STH
   ### objects.  This allows users limited access to their functionality.
@@ -822,7 +832,6 @@ sub AUTOLOAD {
   # If anything ends up in here we should probably make a seperate function
   # for it (if only to keep the logging working properly).
   my $DBHVALIDMETHODS = 
-       'quote '.
        'disconnect '.
        'commit '.
        'rollback '.
@@ -913,7 +922,7 @@ Unless otherwise mentioned all methods return the database handle.
 
 =over 5
 
-=item C<connect>
+=head2 connect
 
 C<connect($connect_config[,$options])> I<CONSTRUCTOR>
 
@@ -938,7 +947,7 @@ source, or a reference to a hash with the following keys:
 Options is a hash reference.  Each key/value pair is passed on to the opt
 method.
 
-=item C<clone>
+=head2 clone
 
 This clones the object.  For those times when you need a second
 connection to the same DB.  If you need a second connection to a
@@ -946,24 +955,24 @@ different DB, create a new object with 'connect'.
 
 This operation is logged at level 5 with the message "Cloned."
 
-=item C<connected>
+=head2 connected
 
 Check to see if this object is connected to a database.  It checks to see if
 it has a database handle and if that handle's "Active" attribute is true.
 
-=item C<reconnect>
+=head2 reconnect
 
 If the object is not connected to a database it will reconnect using the
 same parameters connect was originally called with.
 
-=item C<ensure_connection>
+=head2 ensure_connection
 
 Makes sure that the object is connect to a database.  Makes sure that the
 connect is active (by sending a "SELECT 1").  If there is no connection, or
 the connection is not active then it tries to reconnect.  If it fails to
 reconnect then it dies.
 
-=item C<opt>
+=head2 opt
 
 ($key[,$value])
 
@@ -1003,7 +1012,7 @@ Set option $key to $value.  Available keys are:
 This operation is logged at level 5 with the message "Option Change" and the
 the key, the old value and new new value.
 
-=item query
+=head2 query
 
 ($sql,@bind_params)
 
@@ -1019,22 +1028,22 @@ me know so I can extend DBIx::Abstract to include the functionality you are usin
 
 This operation is logged at level 3
 
-=item run_delayed
+=head2 run_delayed
 
 Execute delayed update/insert/delete queries.
 
 This operation is logged at level 5 with the message "Run delayed".
 
-=item C<delete>
+=head2 delete
 
 ($table[,$where])
 
 ({table=>$table[,where=>$where]})
 
-Deletes records from $table.  See also the documentation on DBIx::Abstract C<where>
-statements.
+Deletes records from $table.  See also the documentation on 
+L<"DBIx::Abstract Where Clauses">.
 
-=item C<insert>
+=head2 insert
 
 ($table,$fields)
 
@@ -1053,7 +1062,7 @@ These all produce functionally equivalent SQL.
   $db->insert({table=>'foo',fields=>q|bar='baz'|});
   
 
-=item C<replace>
+=head2 replace
 
 ($table,$fields)
 
@@ -1068,7 +1077,7 @@ Replace works just like insert, except that if a record with the same
 primary key already exists then the existing record is replaced, instead of
 producing an error.
 
-=item C<update>
+=head2 update
 
 ($table,$fields[,$where])
 
@@ -1078,9 +1087,9 @@ $table is the table to update.
 
 $fields is a reference to a hash keyed on field name/new value.
 
-See also the documentation on DBIx::Abstract C<where> statements. 
+See also the documentation on L<"DBIx::Abstract Where Clauses">.
 
-=item C<select>
+=head2 select
 
 C<select>
 
@@ -1098,7 +1107,7 @@ reference then it should be a list of tables to use.  If it is a scalar
 then it should be a literal to be inserted into the generated SQL after
 "FROM".
 
-See also the documentation on DBIx::Abstract C<where> statements. 
+See also the documentation on L<"DBIx::Abstract Where Clauses">.
 
 $order is the output order.  If it is a scalar then it is inserted
 literally after "ORDER BY".  If it is an arrayref then it is join'd with a
@@ -1124,7 +1133,7 @@ $group is/are the field(s) to group by.  It may be scalar or an arrayref.
 If it is a scalar then it should be a literal to be inserted after "GROUP
 BY".  If it is an arrayref then it should be a list of fields to group on.
 
-=item C<select_one_to_hashref>
+=head2 select_one_to_hashref
 
 ($fields,$table[,$where])
 
@@ -1138,11 +1147,11 @@ $fields is can be either a array reference or a scalar.  If it is an array
 reference then it should be a list of fields to include.  If it is a scalar
 then it should be a literal to be inserted into the generated SQL.
 
-$table is the table to update.
+$table is the table to select from.
 
-See also the documentation on DBIx::Abstract C<where> statements. 
+See also the documentation on L<"DBIx::Abstract Where Clauses">.
 
-=item C<select_all_to_hashref>
+=head2 select_all_to_hashref
 
 ($fields,$table[,$where])
 
@@ -1157,65 +1166,65 @@ $fields is can be either a array reference or a scalar.  If it is an array
 reference then it should be a list of fields to include.  If it is a scalar
 then it should be a literal to be inserted into the generated SQL.
 
-$table is the table to update.
+$table is the table to select from.
 
-See also the documentation on DBIx::Abstract C<where> statements. 
+See also the documentation on L<"DBIx::Abstract Where Clauses">.
 
-=item C<fetchrow_hashref>
+=head2 fetchrow_hashref
 
 This is just a call to the DBI method.
 
-=item C<fetchrow_hash>
+=head2 fetchrow_hash
 
 This calls fetchrow_hashref and deferences it for you.
 
-=item C<fetchrow_array>
+=head2 fetchrow_array
 
 This method calls the database handle's method of the same name.
 
-=item C<fetchall_arrayref>
+=head2 fetchall_arrayref
 
 This method calls the database handle's method of the same name.
 
-=item C<rows>
+=head2 rows
 
 This method calls the database handle's method of the same name.
 
-=item C<quote>
+=head2 quote
 
 This method is passed to the database handle via AUTOLOAD.
 
-=item C<disconnect>
+=head2 disconnect
 
 This method is passed to the database handle via AUTOLOAD.
 
-=item C<commit>
+=head2 commit
 
 This method is passed to the database handle via AUTOLOAD.
 
-=item C<rollback>
+=head2 rollback
 
 This method is passed to the database handle via AUTOLOAD.
 
-=item C<trace>
+=head2 trace
 
 This method is passed to the database handle via AUTOLOAD.
 
-=item C<finish>
+=head2 finish
 
 This method is passed to the statement handle via AUTOLOAD.
 
-=item C<bind_col>
+=head2 bind_col
 
 This method is passed to the statement handle via AUTOLOAD.
 
-=item C<bind_columns>
+=head2 bind_columns
 
 This method is passed to the statement handle via AUTOLOAD.
 
-=item C<where>
+=head1 Other things that need explaination
 
-C<DBIx::Abstract Where Clauses>
+=head2 DBIx::Abstract Where Clauses
 
 Where clauses in DBIx::Abstract can either be very simple, or highly complex.  They
 are designed to be easy to use if you are just typing in a hard coded
@@ -1303,20 +1312,24 @@ will work with all drivers.)
 
 =head1 CHANGE SINCE LAST RELEASE
 
-=item * Changed name to DBIx::Abstract for CPAN.
-
 =over 2
+
+=item * Fixed bug in make test that caused it to fail when a password was
+        needed for testing.  This didn't effect me as my database accepts
+        anonymous connections to the test database over loopback.
+
+=item * Fixed some warnings when username or password were undefined.
 
 
 =back
 
 =head1 AUTHOR
 
-Andrew Turner, turner@mint.net
+Andrew Turner <turnera@cpan.org>
 
 =head1 COPYRIGHT
 
-(C) Copyright 1998,1999 MINT
+(C) Copyright 1998-2000 MINT
 
 This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.
@@ -1327,6 +1340,6 @@ http://members.mint.net/turner/db/
 
 =head1 SEE ALSO
 
-DBI(3)
+L<DBI(3)>
 
 =cut
