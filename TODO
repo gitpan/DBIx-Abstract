@@ -1,3 +1,6 @@
+#1 Rewrite SQL generation to be OO.  This will involve generating a new,
+   seperate module that just generates SQL.
+
 * Look into adding all standard options not currently present to commands
 * (perhaps only through the hash style params)
 

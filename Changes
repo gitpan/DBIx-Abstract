@@ -1,4 +1,15 @@
 Revision history for Perl extension DBIx::Abstract.
+0.95   2000-11-12
+       - Changed how CVSVERSION and LAST_CHANGE are calculated.             
+       - Made it so that you can pass routines literal strings instead of
+         variables (variables are used with bind_params when possbile) by
+         passing a scalar reference.
+       - I also allow array references to do this (in some circumstances)
+         but this is depricated.
+       - Made connect optionally accept DBI handles instead of connection
+         info, by recommendation of Mark Stosberg <mark@summersault.com>.
+       - Changed how self was obtained to be (IMHO) stylistically better.
+
 0.94   2000-08-04
         - Removed an annoying warn that only shows up unpredictably.  I
           think it has to do with Perls garbage collection not working the

@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.29 2000/08/04 20:33:12 turner Exp $
+# $Id: Abstract.pm,v 1.3 2001/02/08 20:58:49 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -6,11 +6,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.94';
-  q{$Revision: 1.29 $} =~ /^\044Revision: (.+) \044$/;
-  $DBIx::Abstract::CVSVERSION = $1;
-  q{$Date: 2000/08/04 20:33:12 $} =~ /^\044Date: (.+) \044$/;
-  $DBIx::Abstract::LAST_CHANGE = $1;
+  $DBIx::Abstract::VERSION = '0.95';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.3 $ =~ /(\d+\.[\d.]+)/;
+  ($DBIx::Abstract::LAST_CHANGE) =
+    q$Date: 2001/02/08 20:58:49 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {
@@ -66,6 +65,8 @@ sub connect {
 
       $data_source = ___drivers($$config{'driver'},$config);
     }
+  } elsif (UNIVERSAL::isa($config,'DBI')) {
+    $dbh = $config;
   } else {
     warn "DBIx::Abstract->connect Config should be hashref.  Using scalar is deprecated.\n";
     $data_source = $config;
@@ -74,8 +75,8 @@ sub connect {
 
   if ($data_source) {
     $dbh = DBI->connect($data_source,$user,$pass);
-  } else {
-    die "Could not understand data source: $data_source\n";
+  } elsif (!$dbh) {
+    die "Could not understand data source.\n";
   }
 
   if (!$dbh) { return 0 }
@@ -441,13 +442,23 @@ sub __where_hash {
     $ret .= "$_ ";
     if (ref($$where{$_}) eq 'ARRAY') {
       $self->__logwrite(7,'Value is array',@{$$where{$_}});
-      $ret .= $$where{$_}[0].' ?';
-      push(@bind_params,$$where{$_}[1]);
+      $ret .= $$where{$_}[0].' ';
+      if (ref($$where{$_}[1]) eq 'SCALAR') {
+        $ret .= ${$$where{$_}[1]};
+      } else {
+        $ret .= '?';
+        push(@bind_params,$$where{$_}[1]);
+      }
     } else {
       $self->__logwrite(7,'Value is literal',$$where{$_});
       if (defined($$where{$_})) {
-        $ret .= '= ?';
-        push(@bind_params,$$where{$_});
+        $ret .= '= ';
+        if (ref($$where{$_}) eq 'SCALAR') {
+          $ret .= ${$$where{$_}};
+        } else {
+          $ret .= '?';
+          push(@bind_params,$$where{$_});
+        }
       } else {
         $ret .= 'IS NULL';
       }
@@ -505,15 +516,17 @@ sub insert {
     $sql .= ') VALUES (';
     for (my $i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ', ' }
-      if (ref($values[$i]) eq 'ARRAY') {
-        $sql .= $values[$i][0];
-      } else {
-        if (defined($values[$i])) {
-            $sql .= '?';
-            push(@bind_params,$values[$i]);
+      if (defined($values[$i])) {
+        if (ref($values[$i]) eq 'SCALAR') {
+          $sql .= ${$values[$i]};
+        } elsif (ref($values[$i]) eq 'ARRAY') {
+          $sql .= $values[$i][0];
         } else {
-            $sql .= 'NULL';
+          $sql .= '?';
+          push(@bind_params,$values[$i]);
         }
+      } else {
+        $sql .= 'NULL';
       }
     }
     $sql .= ')';
@@ -553,15 +566,17 @@ sub replace {
     $sql .= ') VALUES (';
     for (my $i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ', ' }
-      if (ref($values[$i]) eq 'ARRAY') {
-        $sql .= $values[$i][0];
-      } else {
-        if (defined($values[$i])) {
-            $sql .= '?';
-            push(@bind_params,$values[$i]);
+      if (defined($values[$i])) {
+        if (ref($values[$i]) eq 'SCALAR') {
+          $sql .= ${$values[$i]};
+        } elsif (ref($values[$i]) eq 'ARRAY') {
+          $sql .= $values[$i][0];
         } else {
-            $sql .= 'NULL';
+          $sql .= '?';
+          push(@bind_params,$values[$i]);
         }
+      } else {
+        $sql .= 'NULL';
       }
     }
     $sql .= ')';
@@ -602,8 +617,12 @@ sub update {
       if ($i) { $sql .= ',' }
       $sql .= ' '.$keys[$i].'=';
       if (defined($values[$i])) {
-          $sql .= '?';
-          push(@bind_params,$values[$i]);
+          if (ref($values[$i]) eq 'SCALAR') {
+            $sql .= ${$values[$i]};
+          } else {
+            $sql .= '?';
+            push(@bind_params,$values[$i]);
+          }
       } else {
           $sql .= 'NULL';
       }
@@ -759,7 +778,7 @@ sub select_all_to_hashref {
   my $db = $self->clone;
   $self->__logwrite(2,'select_all_to_hash');
   $db->select(@_);
-  my $result = $db->fetchall_arrayref;
+  my $result = $db->fetchall_arrayref();
   my %to_ret;
   foreach (@$result) {
     if ($#$_>1) {
@@ -774,9 +793,9 @@ sub select_all_to_hashref {
 }
 
 sub fetchrow_hashref {
-  my($self) = @_;
+  my $self = shift;
   $self->__logwrite(4,'fetchrow_hashref');
-  my $row = $self->{'sth'}->fetchrow_hashref;
+  my $row = $self->{'sth'}->fetchrow_hashref(@_);
   unless (defined($row)) {
       $self->{'sth'}->finish;
   }
@@ -784,8 +803,8 @@ sub fetchrow_hashref {
 }
 
 sub fetchrow_hash {
-  my($self) = @_;
-  my $result = $self->fetchrow_hashref;
+  my $self = shift;
+  my $result = $self->fetchrow_hashref(@_);
   $self->__logwrite(4,'fetchrow_hash');
   if ($result) {
     return %$result;
@@ -795,9 +814,9 @@ sub fetchrow_hash {
 }
 
 sub fetchrow_arrayref {
-  my($self) = @_;
+  my $self = shift;
   $self->__logwrite(4,'fetchrow_arrayref');
-  my $row = $self->{'sth'}->fetchrow_arrayref;
+  my $row = $self->{'sth'}->fetchrow_arrayref(@_);
   unless (defined($row)) {
       $self->{'sth'}->finish;
   }
@@ -805,9 +824,9 @@ sub fetchrow_arrayref {
 }
 
 sub fetchrow_array {
-  my($self) = @_;
+  my $self = shift;
   $self->__logwrite(4,'fetchrow_array');
-  my @row = $self->{'sth'}->fetchrow_array;
+  my @row = $self->{'sth'}->fetchrow_array(@_);
   if ($#row == -1) {
       $self->{'sth'}->finish;
   }
@@ -815,13 +834,14 @@ sub fetchrow_array {
 }
 
 sub fetchall_arrayref {
-  my($self) = @_;
+  my $self = shift;
   $self->__logwrite(4,'fetchall_arrayref');
-  return $self->{'sth'}->fetchall_arrayref;
+  return $self->{'sth'}->fetchall_arrayref(@_);
 }
 
 sub dataseek {
-  my($self, $pos) = @_;
+  my $self = shift;
+  my($pos) = @_;
   if (ref($pos)) {
     $pos = $$pos{'pos'};
   }
@@ -834,7 +854,7 @@ sub dataseek {
 }
 
 sub rows {
-  my($self) = @_;
+  my $self = shift;
   $self->__logwrite(5,'rows');
   return $self->{'sth'}->rows;
 }
@@ -995,7 +1015,7 @@ Unless otherwise mentioned all methods return the database handle.
 
 =head2 connect
 
-C<connect($connect_config[,$options])> I<CONSTRUCTOR>
+C<connect($connect_config | $dbihandle [,$options])> I<CONSTRUCTOR>
 
 Open a connection to a database as configured by $connect_config.
 $connect_config can either be a scalar, in which case it is a DBI data
@@ -1014,6 +1034,10 @@ source, or a reference to a hash with the following keys:
 
  user     -- Username to connect as
  password -- Password for user
+
+Alternatively you can pass in a DBI handle directly.  This will disable
+the methods "reconnect" and "ensure_connection" as they rely on connection
+info not available on a DBI handle.
 
 Options is a hash reference.  Each key/value pair is passed on to the opt
 method.
@@ -1431,17 +1455,17 @@ will work with all drivers.)
 
 =over 2
 
-=item * Removed an annoying warn that only shows up unpredictably.  I think
-        it has to do with Perls garbage collection not working the way I
-        thought it worked.  Meanwhile I may have fixed the undocumented
-        dataseek method.  But probably not.
+=item * Changed how CVSVERSION and LAST_CHANGE are calculated.             
 
-=item * Made it so that updates and inserts can produce nulls.
+=item * Made it so that you can pass routines literal strings instead of
+        variables (variables are used with bind_params when possbile) by
+        passing a scalar reference.
 
-=item * Fixed tyop, s/STOCK TRACE/STACK TRACE/g.
+=item * I also allow array references to do this (in some circumstances)
+        but this is depricated.
 
-=item * Made connected method safer.  It won't crash if the DBI handle is invalid or 
-        non-existant.
+=item * Made connect optionally accept DBI handles instead of connection
+        info, by recommendation of Mark Stosberg <mark@summersault.com>.
 
 =back
 
@@ -1458,7 +1482,7 @@ and/or modify it under the same terms as Perl itself.
 
 =head1 WEBSITE
 
-http://members.mint.net/turner/db/
+http://sourceforge.net/projects/dbix-abstract/
 
 =head1 SEE ALSO
 
