@@ -1,0 +1,5 @@
+There seems to be a bug involved in calling disconnect on cloned handles. 
+That is, it doesn't seem to always happen.  I've encountered this in our
+modperl project.  Right now my answer is to call disconnect explicitly
+before destroying the object, but I don't like that answer.  When it is
+fixed I'll move it up to 1.0.

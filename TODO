@@ -1,0 +1,11 @@
+* Look into adding all standard options not currently present to commands
+* (perhaps only through the hash style params)
+
+== Look into the ability to add proprietary options to commands
+   Proprietary stuff should be documented away form the main
+   documentation... or CLEARLY marked.
+   Currently it is possible to do this sort of thing with the "extra"
+   parameter, but I'm some what ambivalent about its merits.  It's not
+   documented yet either (due to this ambivalence).
+   * LIMIT functionality to "SELECT"
+   * Other MySQL specific stuff (like insertid)
