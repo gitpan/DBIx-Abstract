@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.22 2000/04/17 23:16:32 turner Exp $
+# $Id: Abstract.pm,v 1.29 2000/08/04 20:33:12 turner Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -6,10 +6,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '0.93';
-  q{$Revision: 1.22 $} =~ /^\044Revision: (.+) \044$/;
+  $DBIx::Abstract::VERSION = '0.94';
+  q{$Revision: 1.29 $} =~ /^\044Revision: (.+) \044$/;
   $DBIx::Abstract::CVSVERSION = $1;
-  q{$Date: 2000/04/17 23:16:32 $} =~ /^\044Date: (.+) \044$/;
+  q{$Date: 2000/08/04 20:33:12 $} =~ /^\044Date: (.+) \044$/;
   $DBIx::Abstract::LAST_CHANGE = $1;
 }
 
@@ -141,7 +141,8 @@ sub ensure_connection {
 
 sub connected {
   my($self) = @_;
-  my $connected = ($self->{'dbh'} and $self->{'dbh'}->{'Active'});
+  my $connected = eval { ($self->{'dbh'} and $self->{'dbh'}->{'Active'}) };
+  $connected = 0 if $@;
   $self->__logwrite(5,'connected',$connected);
   return $connected;
 }
@@ -173,7 +174,7 @@ sub reconnect {
 
 sub DESTROY {
   my $self = shift;
-  if ($self->{'DESTRUCTION'}) {
+  if (exists($self->{'DESTRUCTION'}) and $self->{'DESTRUCTION'}) {
     return -1;
   }
   $self->{'DESTRUCTION'} = 1 ;
@@ -185,22 +186,26 @@ sub DESTROY {
             warn "Error: DBIx::Abstract tried to recurse into $_ from $self during DESTROY \n";
           }
         } else {
-          warn "Error: DBIx::Abstract clone not object\n";
+           # Shouldn't be possible to get here... but Perl's destruction is
+           # a bit weird.  I guess I wouldn't expect less from the
+           # apocalypse.
+#          warn "Error: DBIx::Abstract clone not object\n";
         }
         $_=undef;
       }
     }
-    $self->disconnect;
+    $self->{'sth'}->finish if ref($self->{'sth'});
+    $self->{'dbh'}->disconnect if defined($self->{'dbh'});
   } else {
-    my $new;
+    my $new = [];
     foreach (@{$self->{'ORIG'}->{'CLONES'}}) {
-      if ($self ne $_) {
+      if (defined($_) and ref($_) and $self ne $_) {
         push(@$new,$_);
       }
     }
     $self->{'ORIG'}->{'CLONES'} = $new;
   }
-  $self->{'sth'}->finish if $self->{'sth'};
+  $self->{'sth'}->finish if ref($self->{'sth'});
   delete($self->{'dbh'});
   delete($self->{'sth'});
 #  delete($self->{'connect'});
@@ -216,6 +221,7 @@ sub clone {
   my $class = ref($self);
   my $newself = {%$self};
   delete($$newself{'CLONES'});
+  delete($$newself{'ORIG'});
   bless $newself, $class;
   if (!$self->{'ORIG'}) {
     $newself->{'ORIG'} = $self;
@@ -276,7 +282,7 @@ sub __literal_query {
     eval('use Carp;');
     die 'DBIx::Abstract (execute): '.$sth->errstr."\n".
         "    SQL: $sql\n".
-        "STOCK TRACE\n".
+        "STACK TRACE\n".
         Carp::longmess()."\n";
   }
   $self->{'sth'} = $sth;
@@ -502,8 +508,12 @@ sub insert {
       if (ref($values[$i]) eq 'ARRAY') {
         $sql .= $values[$i][0];
       } else {
-        $sql .= '?';
-        push(@bind_params,$values[$i]);
+        if (defined($values[$i])) {
+            $sql .= '?';
+            push(@bind_params,$values[$i]);
+        } else {
+            $sql .= 'NULL';
+        }
       }
     }
     $sql .= ')';
@@ -546,8 +556,12 @@ sub replace {
       if (ref($values[$i]) eq 'ARRAY') {
         $sql .= $values[$i][0];
       } else {
-        $sql .= '?';
-        push(@bind_params,$values[$i]);
+        if (defined($values[$i])) {
+            $sql .= '?';
+            push(@bind_params,$values[$i]);
+        } else {
+            $sql .= 'NULL';
+        }
       }
     }
     $sql .= ')';
@@ -586,8 +600,13 @@ sub update {
     $#keys>-1 or die 'DBIx::Abstract: update must have fields';
     for ($i=0;$i<=$#keys;$i++) {
       if ($i) { $sql .= ',' }
-      $sql .= ' '.$keys[$i].'=?';
-      push(@bind_params,$values[$i]);
+      $sql .= ' '.$keys[$i].'=';
+      if (defined($values[$i])) {
+          $sql .= '?';
+          push(@bind_params,$values[$i]);
+      } else {
+          $sql .= 'NULL';
+      }
     }
   } elsif (!ref($fields) and $fields) {
     $sql .= " $fields";
@@ -808,7 +827,7 @@ sub dataseek {
   }
   if ($self->{'connect'}{'driver'} eq 'mysql' or 
       $self->{'connect'}{'driver'} eq 'msql') {
-    return $self->func($pos, 'dataseek');
+    return $self->{'sth'}->func($pos, 'dataseek');
   } else {
     die 'Dataseek is not supported by your database '.$self->{'connect'}{'driver'};
   }
@@ -1412,10 +1431,17 @@ will work with all drivers.)
 
 =over 2
 
-=item * Fixed a problem with cloning.  Clones other then the first clone
-        were getting a copy of the clone list.  This caused unexpected calls
-        to the classes DESTROY method.  This produced warnings, but there
-        shouldn't have been any errors.
+=item * Removed an annoying warn that only shows up unpredictably.  I think
+        it has to do with Perls garbage collection not working the way I
+        thought it worked.  Meanwhile I may have fixed the undocumented
+        dataseek method.  But probably not.
+
+=item * Made it so that updates and inserts can produce nulls.
+
+=item * Fixed tyop, s/STOCK TRACE/STACK TRACE/g.
+
+=item * Made connected method safer.  It won't crash if the DBI handle is invalid or 
+        non-existant.
 
 =back
 

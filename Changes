@@ -1,4 +1,17 @@
 Revision history for Perl extension DBIx::Abstract.
+0.94   2000-08-04
+        - Removed an annoying warn that only shows up unpredictably.  I
+          think it has to do with Perls garbage collection not working the
+          way I thought it worked.  Meanwhile I may have fixed the
+          undocumented dataseek method.  But probably not.
+        - Made it so that updates and inserts can produce nulls, eg:
+            $dbh->update('foo',{bar=>undef});
+          Would set the 'bar' column to NULL.
+        - Fixed tyop, s/STOCK TRACE/STACK TRACE/g.
+        - Made connected method safer.  It won't crash if the DBI handle is
+          invalid or non-existant.
+
+
 0.93   2000-04-17
         - Fixed a problem with cloning.  Clones other then the first clone
           were getting a copy of the clone list.  This caused unexpected
