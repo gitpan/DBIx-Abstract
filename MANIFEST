@@ -5,8 +5,7 @@ MANIFEST
 Makefile.PL
 README
 TODO
-lib/Test/More.pm
-lib/Test/Builder.pm
 t/2-dbix-abstract.t
 t/dbia.config
 THANKS
+META.yml                                 Module meta-data (added by MakeMaker)

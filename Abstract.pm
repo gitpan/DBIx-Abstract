@@ -1,4 +1,4 @@
-# $Id: Abstract.pm,v 1.11 2003/02/18 03:28:48 daerr Exp $
+# $Id: Abstract.pm,v 1.14 2005/04/23 12:38:15 daerr Exp $
 package DBIx::Abstract;
 
 use DBI;
@@ -7,10 +7,10 @@ use strict;
 use vars qw( $AUTOLOAD $VERSION $LAST_CHANGE );
 
 BEGIN {
-  $DBIx::Abstract::VERSION = '1.005';
-  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.11 $ =~ /(\d+\.[\d.]+)/;
+  $DBIx::Abstract::VERSION = '1.006';
+  ($DBIx::Abstract::CVSVERSION) = q$Revision: 1.14 $ =~ /(\d+\.[\d.]+)/;
   ($DBIx::Abstract::LAST_CHANGE) =
-    q$Date: 2003/02/18 03:28:48 $ =~ /(\d+\/\S+ \d+:\S+)/;
+    q$Date: 2005/04/23 12:38:15 $ =~ /(\d+\/\S+ \d+:\S+)/;
 }
 
 sub ___drivers {
@@ -55,7 +55,7 @@ sub new {
 
 sub connect {
   my($class,$config,$options) = @_;
-  my($dbh,$data_source,$user,$pass);
+  my($dbh,$data_source,$user,$pass,$driver,$dbname,$host,$port);
   my $self = {};
   
   if (!defined($config)) {
@@ -67,17 +67,28 @@ sub connect {
       $user = $$config{'user'} || $$config{'username'};
       $pass = $$config{'password'} || $$config{'pass'};
       if (!defined($$config{'user'}) && $$config{'password'}) {
-        $$config{'password'} = undef;
+        $pass = undef;
       }
       if (exists($$config{'dsn'})) {
         $data_source = $$config{'dsn'};
       } else {
-        $$config{'driver'} ||= 'mysql'; # Because it's what I use
-        $$config{'dbname'} ||= $$config{'db'} || ''; 
-        $$config{'host'} ||= '';
-        $$config{'port'} ||= '';
+        $driver = $$config{'driver'} || 'mysql'; # Because it's what I use
 
-        $data_source = ___drivers($$config{'driver'},$config);
+        # Forcing these to be passed, one way or another, seems odd to me.
+        # To me it seems like it would be better to not pass them at all, if
+        # they weren't passed to us.  However I suspect that this is here
+        # to fix some obscure bug that I can no longer remember.
+        $dbname = $$config{'dbname'} || $$config{'db'} || ''; 
+        $host   = $$config{'host'} || '';
+        $port   = $$config{'port'} || '';
+
+        $data_source = ___drivers($$config{'driver'},{
+          %$config,
+          driver => $driver,
+          dbname => $dbname,
+          host   => $host,
+          port   => $port,
+          });
       }
     }
   } elsif (UNIVERSAL::isa($config,'DBI::db')) {
@@ -238,7 +249,9 @@ sub DESTROY {
     $self->{'ORIG'}->{'CLONES'} = $new;
   }
   $self->{'sth'}->finish if ref($self->{'sth'});
-  delete($self->{'dbh'});
+## Apparently this can cause $self->{'dbh'} to be deleted prior to
+## disconnect being called.  Bleah.
+#  delete($self->{'dbh'});
   delete($self->{'sth'});
 #  delete($self->{'connect'});
   delete($self->{'options'});
@@ -1514,18 +1527,15 @@ will work with all drivers.)
 
 =over 2
 
-=item * ensure_connect did not work correctly if DBI was set to die on
-        errors.
+=item * Fixed a bug discovered by Jan Martin Mathiassen
+<reaper@mindriot.as>.  If you pass in a password but no username it's
+supposed to ignore the password.  Instead it was clearing it in the hash
+that you passed in but still using it.
 
-=item * Back ported test suite and makefile from 1.1.  Back ported patch to
-        fix mysqlPP compatibility issues.
+=item * Removed Test::More and Test::Builder from the distribution-- put
+Test::Simple in the prerequisites.
 
-=item * Made clone weaken references it takes so that it won't leak memory. 
-        Added memory leak test.
-
-=item * A bug fix relating to select_one_* and select_all_* where if the
-        query failed and returned undef, the routine would crash.  This is
-        now fixed and it just propagates the undef.
+=back
 
 =head1 AUTHOR
 

@@ -69,15 +69,16 @@ if (open(FILE, ">$fileName")) {
 }
 
 WriteMakefile(
-    'NAME'		=> 'DBIx::Abstract',
-    'VERSION_FROM'	=> 'Abstract.pm', 
-    'PREREQ_PM'		=> {
-        'DBI'              => 0,
-        'Scalar::Util'     => 0,
+    'NAME'         => 'DBIx::Abstract',
+    'VERSION_FROM' => 'Abstract.pm', 
+    'PREREQ_PM'	   => {
+        'DBI'          => 0,
+        'Scalar::Util' => 0,
+        'Test::Simple' => 0.44,
         },
-    'PM'            => {'Abstract.pm'=>'blib/lib/DBIx/Abstract.pm'},
-    'dist'          => {'COMPRESS'=>'gzip -9f', 'SUFFIX' => 'gz'},
-#    'clean'         => {FILES=>'config.pl t/3.t test.log'},
+    'PM'           => {'Abstract.pm'=>'blib/lib/DBIx/Abstract.pm'},
+    'dist'         => {'COMPRESS'=>'gzip -9f', 'SUFFIX' => 'gz'},
+    'clean'       => {FILES=>'config.pl t/3.t test.log'},
     ($ExtUtils::MakeMaker::VERSION >= 5.43 ?
       (ABSTRACT_FROM => 'Abstract.pm', # retrieve abstract from module
        AUTHOR        => 'Andy Turner <turnera@cpan.org>') : ()),
