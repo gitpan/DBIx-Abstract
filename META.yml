@@ -1,12 +1,24 @@
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         DBIx-Abstract
-version:      1.006
-version_from: Abstract.pm
-installdirs:  site
+---
+abstract: 'DBI SQL abstraction'
+author:
+  - 'Becca <becca@referencethis.com>'
+build_requires:
+  DBD::SQLite: 0
+  Test::More: 0
+configure_requires:
+  ExtUtils::MakeMaker: 6.30
+dynamic_config: 0
+generated_by: 'Dist::Zilla version 4.300000, CPAN::Meta::Converter version 2.112150'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: DBIx-Abstract
 requires:
-    DBI:                           0
-    Scalar::Util:                  0
-    Test::Simple:                  0.44
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.12
+  Carp: 0
+  Check::ISA: 0
+  DBI: 0
+  Scalar::Util: 0
+  strict: 0
+  warnings: 0
+version: 1.01

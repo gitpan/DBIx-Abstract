@@ -1,11 +1,18 @@
-Abstract.pm
-BUGS
 Changes
+INSTALL
+LICENSE
 MANIFEST
+META.yml
 Makefile.PL
 README
-TODO
-t/2-dbix-abstract.t
-t/dbia.config
+SIGNATURE
 THANKS
-META.yml                                 Module meta-data (added by MakeMaker)
+dist.ini
+lib/DBIx/Abstract.pm
+t/2-dbix-abstract.t
+t/pod.t
+t/release-minimum-version.t
+t/release-no-tabs.t
+t/release-portability.t
+t/release-synopsis.t
+t/release-unused-vars.t
