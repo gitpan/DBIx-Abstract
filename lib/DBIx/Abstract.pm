@@ -1,8 +1,6 @@
 # ABSTRACT: DBI SQL abstraction
 package DBIx::Abstract;
-{
-  $DBIx::Abstract::VERSION = '1.01';
-}
+$DBIx::Abstract::VERSION = '1.02';
 use DBI;
 use Scalar::Util 'weaken';
 use Check::ISA qw( obj_does );
@@ -33,7 +31,7 @@ sub ___drivers {
     }
 
     my @keys;
-    foreach ( keys(%$config) ) {
+    foreach ( keys %$config ) {
         next if /^user$/;
         next if /^password$/;
         next if /^driver$/;
@@ -133,7 +131,7 @@ sub connect {
     }
     $self->{'dbh'} = $dbh;
     $self->opt( loglevel => 0 );
-    foreach ( keys(%$options) ) {
+    foreach ( keys %$options ) {
         $self->opt( $_, $options->{$_} );
     }
     my @log;
@@ -555,7 +553,7 @@ sub __where_hash {
     my $ret;
     my @bind_params;
     $self->__logwrite( 7, 'Processing hash' );
-    foreach ( keys(%$where) ) {
+    foreach ( sort keys %$where ) {
         $self->__logwrite( 7, 'key', $_, 'value', $where->{$_} );
         if ($ret) { $ret .= ' AND ' }
         $ret .= "$_ ";
@@ -632,16 +630,16 @@ sub insert {
 
     my $sql = "INSERT INTO $table ";
     if ( ref($fields) eq 'HASH' ) {
-        my @keys   = keys(%$fields);
-        my @values = values(%$fields);
-        $#keys > -1 or die 'DBIx::Abstract: insert must have fields';
+        my @keys   = sort keys %$fields;
+        my @values = map {$fields->{$_}} @keys;
+        @keys or die 'DBIx::Abstract: insert must have fields';
         $sql .= '(';
-        for ( my $i = 0 ; $i <= $#keys ; $i++ ) {
+        for ( my $i = 0 ; $i < @keys ; $i++ ) {
             if ($i) { $sql .= ',' }
             $sql .= ' ' . $keys[$i];
         }
         $sql .= ') VALUES (';
-        for ( my $i = 0 ; $i <= $#keys ; $i++ ) {
+        for ( my $i = 0 ; $i < @keys ; $i++ ) {
             if ($i) { $sql .= ', ' }
             if ( defined( $values[$i] ) ) {
                 if ( ref( $values[$i] ) eq 'SCALAR' ) {
@@ -689,8 +687,8 @@ sub replace {
 
     my $sql = "REPLACE INTO $table ";
     if ( ref($fields) eq 'HASH' ) {
-        my @keys   = keys(%$fields);
-        my @values = values(%$fields);
+        my @keys   = sort keys %$fields;
+        my @values = map {$fields->{$_}} @keys;
         $#keys > -1 or die 'DBIx::Abstract: insert must have fields';
         $sql .= '(';
         for ( my $i = 0 ; $i <= $#keys ; $i++ ) {
@@ -751,8 +749,8 @@ sub update {
 
     $sql = "UPDATE $table SET";
     if ( ref($fields) eq 'HASH' ) {
-        @keys   = keys(%$fields);
-        @values = values(%$fields);
+        @keys   = sort keys %$fields;
+        @values = map {$fields->{$_}} @keys;
         $#keys > -1 or die 'DBIx::Abstract: update must have fields';
         for ( $i = 0 ; $i <= $#keys ; $i++ ) {
             if ($i) { $sql .= ',' }
@@ -801,10 +799,9 @@ sub select {
     my $group;    #== The key to group by, only available in hash mode
     my ( $sql, $join );
     if ( ref($fields) eq 'HASH' ) {
-        foreach ( keys(%$fields) ) {
-            my $field = $_;
-            $field = lc($field);
-            if (/^-(.*)/) { $field = $1 }
+        foreach ( sort keys %$fields ) {
+            my $field = lc $_;
+            $field =~ s/^-//;
             $fields->{$field} = $fields->{$_};
         }
         $table = $fields->{'table'} || $fields->{'tables'};
@@ -1118,8 +1115,11 @@ sub AUTOLOAD {
 
 1;
 
+__END__
 
 =pod
+
+=encoding utf-8
 
 =head1 NAME
 
@@ -1127,7 +1127,7 @@ DBIx::Abstract - DBI SQL abstraction
 
 =head1 VERSION
 
-version 1.01
+version 1.02
 
 =head1 SYNOPSIS
 
@@ -1637,50 +1637,61 @@ will work with all drivers.)
 
 =over 2
 
-=item * Fixed a bug discovered by Jan Martin Mathiassen
-<reaper@mindriot.as>.  If you pass in a password but no username it's
-supposed to ignore the password.  Instead it was clearing it in the hash
-that you passed in but still using it.
+=item * Updated source pointers to github.
 
-=item * Removed Test::More and Test::Builder from the distribution-- put
-Test::Simple in the prerequisites.
+=item * Fixed hash randomization related test failure
 
 =back
 
 =head1 AUTHOR
 
-Rebecca Turner <winter@cpan.org>
+Rebecca Turner <me@re-becca.org>
 
-=head1 COPYRIGHT AND LICENSE
+=head1 SOURCE
 
-Portions copyright 2001-2002,2011 by Rebecca Turner
+The development version is on github at L<http://https://github.com/iarna/DBIx-Abstract>
+and may be cloned from L<git://https://github.com/iarna/DBIx-Abstract.git>
 
-Portions copyright 2000-2001 by Adelphia Business Solutions
+=for :stopwords cpan testmatrix url annocpan anno bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
 
-Copyright 1998-2000 by the Maine Internetworks (MINT)
+=head1 SUPPORT
 
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+=head2 Websites
 
-=head1 SEE ALSO
+The following websites have more information about this module, and may be of help to you. As always,
+in addition to those websites please use your favorite search engine to discover more resources.
 
-http://sourceforge.net/projects/dbix-abstract/
+=over 4
 
-L<DBI(3)>
+=item *
+
+MetaCPAN
+
+A modern, open-source CPAN search engine, useful to view POD in HTML format.
+
+L<http://metacpan.org/release/DBIx-Abstract>
+
+=back
+
+=head2 Bugs / Feature Requests
+
+Please report any bugs at L<https://github.com/iarna/DBIx-Abstract/issues>.
 
 =head1 AUTHOR
 
-Becca <becca@referencethis.com>
+Rebecca Turner <me@re-becca.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2011 by Rebecca Turner.
+Portions copyright 2001-2014 by Rebecca Turner
+
+Portions copyright 2000-2001 by Adelphia Business Solutions
+
+Portions copyright 1998-2000 by the Maine Internetworks (MINT)
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
+L<DBI(3)>
+
 =cut
-
-
-__END__
-

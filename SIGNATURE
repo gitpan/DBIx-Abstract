@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.68.
+signed via the Module::Signature module, version 0.69.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -14,37 +14,35 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 01bd8ec5787e13958b59de2f8acee8093075ad29 Changes
+SHA1 c55e71e7147635fe37c08e3af4b1882ba1abe03f Changes
 SHA1 268ab0c57b05e4585f89ca3101472078efba81b9 INSTALL
-SHA1 7f7f48c804dbd34389e2a6e6622f50e9f21bbbc5 LICENSE
-SHA1 fb77fe1d42959d99179d92bbbf6c1988c82decce MANIFEST
-SHA1 fdb57f8b51f28f83ed781f3eedb29bc7e6690bf6 META.yml
-SHA1 75bf474fcca6e6a93e47de5a1960ad63894301da Makefile.PL
-SHA1 bb2d1f5ed0e2d89a81c4aafc44d224d3b0f038af README
+SHA1 8e1bbc507f96b7043c901fe822f0a2a6ae5ab952 LICENSE
+SHA1 b5fbfe9e89c4ca493cb6d92668f6fe094b1cf8ac MANIFEST
+SHA1 2171bb0023c67a34e3f381e8e53d80381c3957ea META.yml
+SHA1 9b3720c2359534d48cc5dbaea1ff65d1a30ae482 Makefile.PL
+SHA1 0d6189d3a1c2166864eb37dd95357695ba86d8ff README
 SHA1 a6b50ea5c2665318927f7dc42bcd42c26fbb2dfa THANKS
-SHA1 047315d0b1cdfc1fed31b34dcb8cdb890d3cc169 dist.ini
-SHA1 d0a4a204e8df25d41dfdd067329a07c5cffd39a1 lib/DBIx/Abstract.pm
-SHA1 2afe30feff4686ab56b0fee7091c2d9c72cc8c76 t/2-dbix-abstract.t
+SHA1 cf6453906979f84820158ff4bccdeb798c8afdf6 lib/DBIx/Abstract.pm
+SHA1 3823460442ab5be399fca541c9863b52e8d48589 t/2-dbix-abstract.t
 SHA1 b2131e5af08c2702a3742365d55f365e9cc0cf15 t/pod.t
 SHA1 54ed25287b7e1c9ff328eaf126d438438c8a1d48 t/release-minimum-version.t
 SHA1 455d1dd1867212a665ad5ea4126b572411de300c t/release-no-tabs.t
-SHA1 3bb783b8a31b5eaff916bcb8bf7b348ee340ecb5 t/release-portability.t
+SHA1 8d931d5c7b6fc03e39a744d59522e4b7077562a1 t/release-portability.t
 SHA1 612226d447015079c046d65932f774304a4b9f20 t/release-synopsis.t
-SHA1 d7221447937ab93002a123801def7be09748c106 t/release-unused-vars.t
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
+Version: GnuPG v1.4.12 (GNU/Linux)
 
-iQIcBAEBAgAGBQJOU+C+AAoJEF6ojHedHIiFvkcQAOo7iGcxzK6lYkKiHNkYlC4B
-cE4jGoUp8ee6oyjObmq7+RVoHSIo6PEbTxijEY4Iwi3pjZUE7W0fxriMe5Bkl+FZ
-pPRyiNBq6WpHwautvU4GHPXfS2IuACPxKKnAI9lzeaodKhcQkW+X9dRYYIY0AxGK
-7tlsQBIyG9rMlyTOlIq4nER51slZlI2+TeNVHswyWjMOfBYLoE/S0zI2Gj4Po5sr
-QWAWwx7inst5DEAetuXviXO6jH7CUtF76RrIwY4XDmN9aqEizi07CLz9fzU1FtlJ
-GGRPgLlBge0YMq1M/FB40L0sWHPWyrdzPNdWQvHxNwAmuahd0kJFZN9c1va1uuep
-YAOrfy4toci5SMsaxE+EeLKfsXyWBSFie43WcovncNvUoe1ToMQ/qSGMbzypIUWj
-Yowg6cJQmB6W4uLrMFAI/DbBCAG/Ct2AgXRAtqwz/TKEangqti+8I4OVbI7xXAfD
-GsK20T8MTbaDLNgZs67cq+x+KaVLQTl8m4m6+9JNE+tZPSGIj5p1CbU1exqXrouA
-fv3iIc4RW6EhVwelY3TB08EpdbPwq+ytYPrwyxbXbqM+vNukSh7vRDgnpkeQcBQb
-xi0Kj4oVEhBKy6FXJofpMM1FN0Jbx0ISixnnLMJXBprZZInLe4CB2vNZC4f00RRu
-O98LJ/Wud/7D5a9h3fAP
-=dLGa
+iQIcBAEBAgAGBQJS1XkgAAoJEF6ojHedHIiFiMIQAOBNpD1NGXowiNPHCuZLs0ic
+6BQegoBkUeGcNB1ZXOjOl4SXi15eT5fkE3LSn6qEVJa9sWUPNP28/6RXN76SImqv
+1S3lWbLRNUUQhYab3SH9jvZJgC9Hzg7BSDSXktEKdXfb6Kz1tNFedpC2TVrvCjyz
+ot/2Vm7X0xQeFs7qPbtSAimpUdUgKkhynvp+Z/pUgdJtGihjYcbLPTLwEo18MzcB
+aZmIqRNiZ/uAfZZySrC065UGW9ZsODUGv/ncDSq7Aijq9ZHE4WeDYorHToLaWUAM
+oZHj7CiEKYEOFI9G+31miDe1RjAOtZyuH/OZe6t5VZyHLbG+fZGFoay0SLtilmBi
+pzQhLhp4no5WrAwU/QKZwmw/S5+z83w5+lzg/j7t2OehHJfU3BdNf3R7oVOwp+zb
+4arMlyMJQtAgbK9huBu8JtHq+teUfY3oIYI3YM6yvSl2RWnY7ivetG1YnSMgoFpm
+aIO2DBZHSSZrL/0RJMzohVELmqeR5KzmsBsf2061Pz0T1UOq9iSovuKC/d/c6JC2
+1OxoaRpsq4yYWgsIJncafSvEf/04VgsLrcvsS0VmZF8G9t2IGbYsXXCEJezOnkA/
+a2btYZ+pVWsXZCzhh6qa1i4ikg0xba5s3Ydo1yozd0UASNeQyHHh76Ktax3qHO8g
+9bYimaPUq2500puWwgW9
+=6cDQ
 -----END PGP SIGNATURE-----
