@@ -1,6 +1,6 @@
 # ABSTRACT: DBI SQL abstraction
 package DBIx::Abstract;
-$DBIx::Abstract::VERSION = '1.02';
+$DBIx::Abstract::VERSION = '1.03';
 use DBI;
 use Scalar::Util 'weaken';
 use Check::ISA qw( obj_does );
@@ -896,7 +896,7 @@ sub select_one_to_hashref {
     $self->__logwrite( 2, 'select_one_to_hashref' );
     $db->select(@_);
     my $result = $db->fetchrow_hashref;
-    return undef unless $result;
+    return unless $result;
     return {%$result};
 }
 
@@ -906,7 +906,7 @@ sub select_one_to_arrayref {
     $self->__logwrite( 2, 'select_one _to_arrayref' );
     $db->select(@_);
     my $result = $db->fetchrow_arrayref;
-    return undef unless $result;
+    return unless $result;
     return [@$result];
 }
 
@@ -916,7 +916,7 @@ sub select_one_to_array {
     $self->__logwrite( 2, 'select_one_to_arrayref' );
     $db->select(@_);
     my $result = $db->fetchrow_arrayref;
-    return undef unless $result;
+    return unless $result;
     return @$result;
 }
 
@@ -931,7 +931,7 @@ sub select_all_to_hashref {
     $self->__logwrite( 2, 'select_all_to_hash' );
     $db->select(@_);
     my $result = $db->fetchall_arrayref();
-    return undef unless $result;
+    return unless $result;
     my %to_ret;
     foreach (@$result) {
 
@@ -1127,7 +1127,7 @@ DBIx::Abstract - DBI SQL abstraction
 
 =head1 VERSION
 
-version 1.02
+version 1.03
 
 =head1 SYNOPSIS
 
