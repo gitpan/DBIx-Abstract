@@ -22,4 +22,4 @@ resources:
   bugtracker: https://github.com/iarna/DBIx-Abstract/issues
   homepage: https://github.com/iarna/DBIx-Abstract
   repository: https://github.com/iarna/DBIx-Abstract.git
-version: 1.03
+version: 1.04

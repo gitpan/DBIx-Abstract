@@ -1,6 +1,6 @@
 # ABSTRACT: DBI SQL abstraction
 package DBIx::Abstract;
-$DBIx::Abstract::VERSION = '1.03';
+$DBIx::Abstract::VERSION = '1.04';
 use DBI;
 use Scalar::Util 'weaken';
 use Check::ISA qw( obj_does );
@@ -31,7 +31,7 @@ sub ___drivers {
     }
 
     my @keys;
-    foreach ( keys %$config ) {
+    foreach ( sort keys %$config ) {
         next if /^user$/;
         next if /^password$/;
         next if /^driver$/;
@@ -131,7 +131,7 @@ sub connect {
     }
     $self->{'dbh'} = $dbh;
     $self->opt( loglevel => 0 );
-    foreach ( keys %$options ) {
+    foreach ( sort keys %$options ) {
         $self->opt( $_, $options->{$_} );
     }
     my @log;
@@ -1127,7 +1127,7 @@ DBIx::Abstract - DBI SQL abstraction
 
 =head1 VERSION
 
-version 1.03
+version 1.04
 
 =head1 SYNOPSIS
 
